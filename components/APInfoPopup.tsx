@@ -9,6 +9,7 @@ import {
   shortMacguffinString,
 } from "../utils/handleItems";
 import Colors from "../styles/Colors";
+import Theme from "../styles/Theme";
 
 function MacguffinHuntTracker({
   goalString,
@@ -253,11 +254,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   letterNotFound: {
-    color: Colors.black,
+    color: Theme.textPrimary,
     fontSize: 30,
     fontWeight: "bold",
   },
   item: { marginBottom: 10 },
   button: { marginTop: 10, marginBottom: 10 },
-  goal: { fontWeight: "bold", color: Colors.black },
+  goal: { fontWeight: "bold", color: Theme.textPrimary },
 });

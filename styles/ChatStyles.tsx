@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import Colors from "./Colors";
+import Theme from "./Theme";
 
 const chatStyles = StyleSheet.create({
   chat: {
@@ -12,7 +12,7 @@ const chatStyles = StyleSheet.create({
   },
   message: {
     flex: 1,
-    color: Colors.black,
+    color: Theme.textPrimary,
   },
   chatBox: {
     flex: 1,

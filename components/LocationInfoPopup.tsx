@@ -10,6 +10,7 @@ import { MAP_ID_TO_ITEM } from "../utils/handleItems";
 import { SettingsContext } from "./SettingsContext";
 import { getDistanceFromLatLonInKm } from "../utils/getLocations";
 import { banLocation } from "../screens/BannedLocations";
+import Theme from "../styles/Theme";
 
 /**Time between location rerolls in seconds */
 export const REROLL_TIME = 120;
@@ -302,7 +303,7 @@ export default function LocationInfoPopup({
                 style={{
                   fontSize: 10,
                   maxWidth: "70%",
-                  color: "gray",
+                  color: Theme.textSecondary,
                 }}
               >
                 Next reroll available in about{" "}
@@ -317,7 +318,7 @@ export default function LocationInfoPopup({
           </View>
           <Pressable>
             <Text
-              style={{ fontSize: 12, color: "gray", textAlign: "right" }}
+              style={{ fontSize: 12, color: Theme.textSecondary, textAlign: "right" }}
               selectable
             >
               osm ID:{locationInfo.coords.osmID}
@@ -364,7 +365,7 @@ export default function LocationInfoPopup({
                   }}
                 />
               ) : (
-                <Text style={{ marginBottom: 10, color: "gray" }}>
+                <Text style={{ marginBottom: 10, color: Theme.textSecondary }}>
                   {client.socket.connected
                     ? "You do not have enough hint points to hint this location"
                     : "You are not currently connected"}
@@ -391,7 +392,7 @@ export default function LocationInfoPopup({
                         }}
                       />
                     ) : (
-                      <Text style={{ marginBottom: 10, color: "gray" }}>
+                      <Text style={{ marginBottom: 10, color: Theme.textSecondary }}>
                         {client.socket.connected
                           ? "You do not have enough hint points to hint a key"
                           : "You are not currently connected"}
@@ -407,7 +408,7 @@ export default function LocationInfoPopup({
                       style={{
                         marginBottom: 10,
                         fontSize: 12,
-                        color: hint.found ? "darkgreen" : "darkred",
+                        color: hint.found ? Theme.success : Theme.danger,
                       }}
                     >
                       {client.players.self.alias}'s {hint.item} is at{" "}

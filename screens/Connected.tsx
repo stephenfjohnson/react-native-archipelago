@@ -25,7 +25,7 @@ import { ClientContext } from "../components/ClientContext";
 import { ErrorContext } from "../components/ErrorContext";
 import { SettingsContext } from "../components/SettingsContext";
 import HintsScreen from "./HintsScreen";
-import Colors from "../styles/Colors";
+import Theme from "../styles/Theme";
 import playAudio from "../utils/playAudio";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 
@@ -403,13 +403,17 @@ export default function Connected({
                   <View
                     style={{
                       zIndex: 1000,
-                      backgroundColor: Colors.white,
+                      backgroundColor: Theme.surface,
+                      borderWidth: 1,
+                      borderColor: Theme.glassBorder,
                       borderRadius: 5,
                       marginTop: 5,
                       padding: 2,
                     }}
                   >
-                    <Text>Lost connection.{"\n"}Reconnecting...</Text>
+                    <Text style={{ color: Theme.textPrimary }}>
+                      Lost connection.{"\n"}Reconnecting...
+                    </Text>
                   </View>
                 </View>
               )}

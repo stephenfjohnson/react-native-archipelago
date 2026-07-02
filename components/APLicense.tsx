@@ -11,6 +11,8 @@ import {
   ScrollView,
 } from "react-native";
 
+import Theme from "../styles/Theme";
+
 const LicenseItem = ({
   logoLink,
   logo,
@@ -48,7 +50,7 @@ const LicenseItem = ({
           </View>
           <FontAwesome
             style={{ alignSelf: "center" }}
-            color="#34495e"
+            color={Theme.textSecondary}
             size={16}
             name="chevron-right"
           />
@@ -123,7 +125,7 @@ const Link = ({
 const styles = StyleSheet.create({
   container: {
     borderWidth: 2,
-    borderColor: "rgba(56, 55, 55, 0.18)",
+    borderColor: Theme.glassBorder,
     marginHorizontal: 12,
     borderRadius: 4,
     marginTop: 6,
@@ -135,7 +137,7 @@ const styles = StyleSheet.create({
     maxHeight: 150,
     overflow: "hidden",
     flexDirection: "row",
-    backgroundColor: "white",
+    backgroundColor: Theme.surface,
     alignItems: "stretch",
   },
   cardShadow: {
@@ -159,6 +161,7 @@ const styles = StyleSheet.create({
   name: {
     fontWeight: "bold",
     fontSize: 16,
+    color: Theme.textPrimary,
   },
   image: {
     width: 96,
@@ -171,7 +174,7 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    color: "#34495e",
+    color: Theme.textSecondary,
     marginTop: 3,
   },
 });

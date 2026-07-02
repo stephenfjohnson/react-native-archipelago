@@ -1,14 +1,16 @@
 import { StyleSheet } from "react-native";
 
+import Theme from "./Theme";
+
 const errorStyles = StyleSheet.create({
   container: {
-    backgroundColor: "black",
+    backgroundColor: Theme.surface,
     flexDirection: "row",
     padding: 5,
     alignItems: "center",
   },
   text: {
-    color: "red",
+    color: Theme.danger,
     flex: 10,
     verticalAlign: "middle",
     fontSize: 18,

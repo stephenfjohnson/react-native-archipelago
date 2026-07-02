@@ -16,11 +16,12 @@ import Button from "../components/Button";
 import Popup from "../components/Popup";
 import { Settings, SettingsContext } from "../components/SettingsContext";
 import commonStyles from "../styles/CommonStyles";
+import Theme from "../styles/Theme";
 import { MaterialTopTabBarProps } from "@react-navigation/material-top-tabs";
 
 const settingsStyles = StyleSheet.create({
   settingsContainer: {
-    borderColor: "black",
+    borderColor: Theme.glassBorder,
   },
   list: {
     width: "90%",
@@ -32,7 +33,7 @@ const settingsStyles = StyleSheet.create({
     borderRadius: 4,
     maxHeight: 150,
     overflow: "hidden",
-    backgroundColor: "white",
+    backgroundColor: Theme.surface,
     marginHorizontal: 12,
     marginVertical: 6,
   },
@@ -41,6 +42,7 @@ const settingsStyles = StyleSheet.create({
     marginVertical: 10,
     marginLeft: 10,
     fontSize: 25,
+    color: Theme.textPrimary,
   },
 });
 
@@ -217,7 +219,7 @@ export default function SettingsScreen({
                       }}
                       name="question-circle"
                       size={15}
-                      color="black"
+                      color={Theme.textPrimary}
                     />
                   </Text>
                   <SettingItem

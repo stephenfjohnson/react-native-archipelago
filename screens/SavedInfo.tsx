@@ -11,6 +11,7 @@ import { ErrorContext } from "../components/ErrorContext";
 import Popup from "../components/Popup";
 import commonStyles from "../styles/CommonStyles";
 import settingsStyles from "../styles/settingsStyles";
+import Theme from "../styles/Theme";
 import {
   STORAGE_TYPES,
   getAllNames,
@@ -46,7 +47,7 @@ const ListItem = ({
   return (
     <TouchableHighlight
       activeOpacity={0.6}
-      underlayColor="#DDDDDD"
+      underlayColor={Theme.glassHighlight}
       style={settingsStyles.item}
       onPress={() => {
         connectToAp(item);
@@ -60,7 +61,9 @@ const ListItem = ({
           justifyContent: "space-around",
         }}
       >
-        <Text style={{ fontSize, flex: 8 }}>{item}</Text>
+        <Text style={{ fontSize, flex: 8, color: Theme.textPrimary }}>
+          {item}
+        </Text>
         <Button
           text=""
           removeText
