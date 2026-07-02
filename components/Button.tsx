@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import commonStyles from "../styles/CommonStyles";
+import Theme from "../styles/Theme";
 
 export default function Button({
   onPress,
@@ -34,7 +35,7 @@ export default function Button({
   return (
     <TouchableHighlight
       style={{ ...commonStyles.touchableHighlightButton, ...buttonStyle }}
-      underlayColor={"#8E24C9"}
+      underlayColor={Theme.accent}
       onPress={onPress}
       {...buttonProps}
     >

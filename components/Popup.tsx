@@ -32,7 +32,9 @@ export default function Popup({
           radius={Theme.radius.lg}
           style={[{ margin: 20, ...Theme.glow(Theme.accentGlow) }, popupStyle]}
         >
-          <View style={{ padding: 28, alignItems: "center" }}>{children}</View>
+          <View style={[{ padding: 28, alignItems: "center" }, popupStyle]}>
+            {children}
+          </View>
         </GlassSurface>
       </View>
     </Modal>
