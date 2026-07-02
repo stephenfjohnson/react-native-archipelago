@@ -153,7 +153,7 @@ export default function HintsScreen() {
       label: "Location",
       key: "location",
       render: (location: string) => (
-        <Text style={{ color: "green" }}>{location}</Text>
+        <Text style={{ color: Theme.success }}>{location}</Text>
       ),
       sortable: true,
     },

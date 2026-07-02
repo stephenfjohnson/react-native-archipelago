@@ -9,6 +9,7 @@ import Button from "../components/Button";
 import { APInfo, ClientContext } from "../components/ClientContext";
 import { ErrorContext } from "../components/ErrorContext";
 import Popup from "../components/Popup";
+import AmbientDots from "../components/glass/AmbientDots";
 import commonStyles from "../styles/CommonStyles";
 import settingsStyles from "../styles/settingsStyles";
 import Theme from "../styles/Theme";
@@ -324,6 +325,7 @@ export default function SavedInfo({
     <View
       style={{ height: "100%", flex: 1, alignItems: "center", marginTop: 3 }}
     >
+      <AmbientDots />
       <Popup
         visible={modalVisible}
         closePopup={() => {

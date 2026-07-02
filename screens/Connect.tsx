@@ -11,6 +11,7 @@ import Button from "../components/Button";
 import { APInfo, ClientContext } from "../components/ClientContext";
 import { ErrorContext } from "../components/ErrorContext";
 import Popup from "../components/Popup";
+import AmbientDots from "../components/glass/AmbientDots";
 import commonStyles from "../styles/CommonStyles";
 import mainStyles from "../styles/MainStyles";
 import {
@@ -112,6 +113,7 @@ export default function Connect({
 
   return (
     <SafeAreaView style={mainStyles.connectionContainer}>
+      <AmbientDots />
       <Popup visible={modalVisible} closePopup={closePopup}>
         <Text style={commonStyles.modalText}>
           What do you want to save this connection as?

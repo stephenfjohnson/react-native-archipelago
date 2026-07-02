@@ -14,6 +14,7 @@ import * as Location from "expo-location";
 import APLicense from "../components/APLicense";
 import Button from "../components/Button";
 import Popup from "../components/Popup";
+import AmbientDots from "../components/glass/AmbientDots";
 import { Settings, SettingsContext } from "../components/SettingsContext";
 import commonStyles from "../styles/CommonStyles";
 import Theme from "../styles/Theme";
@@ -162,6 +163,7 @@ export default function SettingsScreen({
   };
   return (
     <>
+      <AmbientDots />
       <Popup visible={modalVisible} closePopup={closePopup}>
         <Text style={commonStyles.modalText}>{selectedDescription}</Text>
         <View style={commonStyles.modalButtonContainer}>

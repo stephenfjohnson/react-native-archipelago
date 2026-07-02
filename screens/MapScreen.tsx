@@ -832,7 +832,7 @@ export default function MapScreen({
         disabled={generating}
       >
         <View>
-          <FontAwesome name="refresh" size={24} color="black" />
+          <FontAwesome name="refresh" size={24} color={Theme.accentBright} />
         </View>
       </Pressable>
       <Pressable
