@@ -54,11 +54,7 @@ const getOSMTypeAndIdAPI = (
   return `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&zoom=${zoom}&addressdetails=1&extratags=1&format=json`;
 };
 
-const fetchOverpassInfo = async (
-  latitude: number,
-  longitude: number,
-  bannedLocationString: string,
-) => {
+const fetchOverpassInfo = async (latitude: number, longitude: number) => {
   console.log("getting overpass info from lat lon:", latitude, longitude);
   const query = `[out:json];
   way(around:200, ${latitude},${longitude})->.a;
@@ -81,7 +77,6 @@ const fetchOverpassInfo = async (
     way.a["highway"="tertiary"]["maxspeed"~"^[0-5][0-9]?$"];
     way.a["highway"="secondary"]["maxspeed"~"^[0-3][0-9]? mph$"];
     way.a["highway"="tertiary"]["maxspeed"~"^[0-3][0-9]? mph$"];
-    ${bannedLocationString}
   );
   >;
   out skel;`;
@@ -140,7 +135,7 @@ async function generateLocationOverpass(
   max: number,
   theta: number,
   zoom: number,
-  bannedLocationString: string,
+  bannedOsmIDs: Set<string>,
   min = 0,
 ) {
   if (min > max) {
@@ -174,13 +169,14 @@ async function generateLocationOverpass(
   console.log("generated coordinates:", newLatitude, newLongitude);
   try {
     await wait(125);
-    const res = await fetchOverpassInfo(
-      newLatitude,
-      newLongitude,
-      bannedLocationString,
-    );
+    const res = await fetchOverpassInfo(newLatitude, newLongitude);
 
-    const coords = res[0];
+    // Pick the first returned node that isn't a banned location. osmIDs are
+    // formatted as the capitalized first letter of the type + the id, e.g.
+    // "N123" for node 123 (matching how banned locations are stored).
+    const coords = res.find(
+      (node) => !bannedOsmIDs.has(node.type[0].toUpperCase() + node.id),
+    );
     if (coords == null)
       return { distance: 0, newLatitude: 0, newLongitude: 0, osmID: "0" };
 
@@ -289,7 +285,7 @@ async function getLocationCoordinates(
   useNearZoom: boolean,
   minRadian: number,
   maxRadian: number,
-  bannedLocationString: string,
+  bannedOsmIDs: Set<string>,
   minimum_distance = 0,
   correction = 0,
   loop_count = 0,
@@ -318,7 +314,7 @@ async function getLocationCoordinates(
     maxDist,
     theta,
     zoom,
-    bannedLocationString,
+    bannedOsmIDs,
     minDist,
   );
   if (res.osmID === "0") {
@@ -343,7 +339,7 @@ async function getLocationCoordinates(
       useNearZoom,
       minRadian,
       maxRadian,
-      bannedLocationString,
+      bannedOsmIDs,
       minimum_distance,
       correction,
       loop_count,
@@ -380,7 +376,7 @@ async function getLocationCoordinates(
       useNearZoom,
       minRadian,
       maxRadian,
-      bannedLocationString,
+      bannedOsmIDs,
       minimum_distance,
       cor,
       loop_count + 1,
@@ -402,7 +398,7 @@ export default async function getLocations(
   useNearZoom: boolean,
   maxRadian: number,
   minRadian: number,
-  bannedLocationString: string,
+  bannedOsmIDs: Set<string>,
 ) {
   const coordinates = await getLocationCoordinates(
     initialCords.latitude,
@@ -412,7 +408,7 @@ export default async function getLocations(
     useNearZoom,
     minRadian,
     maxRadian,
-    bannedLocationString,
+    bannedOsmIDs,
     minimum_distance,
   );
   return {

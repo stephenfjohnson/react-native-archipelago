@@ -60,7 +60,7 @@ export function ErrorMessage() {
       {!!error && (
         <View style={errorStyles.container}>
           <View style={errorStyles.icon}>
-            <AntDesign name="exclamationcircleo" size={50} color="red" />
+            <AntDesign name="exclamation-circle" size={50} color="red" />
           </View>
           <Text style={errorStyles.text}>{errorString}</Text>
           <Button

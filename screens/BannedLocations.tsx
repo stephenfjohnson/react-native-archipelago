@@ -419,7 +419,7 @@ export default function BannedLocations({
             backHandler.current?.remove();
             navigation.goBack();
           }}
-          name="arrowleft"
+          name="arrow-left"
           size={30}
           color="gray"
           style={{ flex: 1, verticalAlign: "middle" }}
@@ -456,7 +456,7 @@ export default function BannedLocations({
         }}
       >
         <View>
-          <AntDesign name="questioncircleo" size={24} color="black" />
+          <AntDesign name="question-circle" size={24} color="black" />
         </View>
       </Pressable>
       <MapView

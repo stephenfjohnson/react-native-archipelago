@@ -215,7 +215,7 @@ export default function SettingsScreen({
                         setSelectedDescription(setting.description);
                         setModalVisible(true);
                       }}
-                      name="questioncircleo"
+                      name="question-circle"
                       size={15}
                       color="black"
                     />

@@ -358,11 +358,11 @@ export default function MapScreen({
         loc.longitude = HOME_LOCATION.longitude;
       }
       const bannedLocations = await getBannedLocations();
-      let bannedLocationString = "";
-      for (const location of bannedLocations) {
-        if (location.osmID.startsWith("N"))
-          bannedLocationString += `way.a["id"!="${location.osmID.replace("N", "")}"];\n`;
-      }
+      const bannedOsmIDs = new Set(
+        bannedLocations
+          .map((location) => location.osmID)
+          .filter((osmID) => osmID.startsWith("N")),
+      );
       rerollAllowedRef.current = false;
       const oldTrip: trip = trips.find((trip: trip) => trip.id === id);
       const filteredTrips = removeCheckedLocations(trips, [id]);
@@ -376,7 +376,7 @@ export default function MapScreen({
         NEAR_ZOOM,
         MAX_RADIAN,
         MIN_RADIAN,
-        bannedLocationString,
+        bannedOsmIDs,
       );
       const isDuplicate = trips.some(
         (value) =>
@@ -501,11 +501,11 @@ export default function MapScreen({
       loc.longitude = HOME_LOCATION.longitude;
     }
     const bannedLocations = await getBannedLocations();
-    let bannedLocationString = "";
-    for (const location of bannedLocations) {
-      if (location.osmID.startsWith("N"))
-        bannedLocationString += `way.a["id"!="${location.osmID.replace("N", "")}"];\n`;
-    }
+    const bannedOsmIDs = new Set(
+      bannedLocations
+        .map((location) => location.osmID)
+        .filter((osmID) => osmID.startsWith("N")),
+    );
     if (loadedTrips === null && data.trips != null) {
       let index = 0;
       const tripAmount = Object.entries(data.trips).length;
@@ -551,7 +551,7 @@ export default function MapScreen({
             NEAR_ZOOM,
             MAX_RADIAN,
             MIN_RADIAN,
-            bannedLocationString,
+            bannedOsmIDs,
           );
           generatingCoords = tempTrips.some(
             (value) =>
@@ -584,7 +584,11 @@ export default function MapScreen({
     }
     if (isDisconnecting.current) return;
 
-    filteredTrips.forEach(async (trip) => {
+    // Await the re-rolls of any locations that failed to generate before we
+    // publish the trips below. A forEach(async ...) here would be
+    // fire-and-forget, so setTrips/geofenceLocations would run with the failed
+    // (0,0 / osmID "0") coordinates still in place.
+    for (const trip of filteredTrips) {
       if (trip.coords.osmID === "0") {
         const newCoords = await getLocations(
           loc,
@@ -595,7 +599,7 @@ export default function MapScreen({
           NEAR_ZOOM,
           MAX_RADIAN,
           MIN_RADIAN,
-          bannedLocationString,
+          bannedOsmIDs,
         );
         newCoords.duplicate = filteredTrips.some(
           (value) =>
@@ -604,7 +608,7 @@ export default function MapScreen({
         );
         trip.coords = newCoords;
       }
-    });
+    }
     const keyAmount = client.items.received.map(
       (item) => item.id === MAP_ID_TO_ITEM.KEY,
     ).length;
