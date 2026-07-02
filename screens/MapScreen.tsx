@@ -885,7 +885,9 @@ export default function MapScreen({
             }}
           >
             <ActivityIndicator size="large" />
-            <Text style={{ marginTop: 10 }}>{generatingStatus}</Text>
+            <Text style={{ marginTop: 10, color: Theme.textPrimary }}>
+              {generatingStatus}
+            </Text>
           </View>
         </View>
       )}

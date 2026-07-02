@@ -372,7 +372,11 @@ export default function SavedInfo({
           data={savedInfo}
           estimatedItemSize={83}
           nestedScrollEnabled
-          ListEmptyComponent={<Text>No saved connections</Text>}
+          ListEmptyComponent={
+            <Text style={{ color: Theme.textPrimary }}>
+              No saved connections
+            </Text>
+          }
           renderItem={({ item }) => (
             <ListItem
               item={item}

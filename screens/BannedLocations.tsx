@@ -267,6 +267,7 @@ export default function BannedLocations({
           <Text
             style={{
               marginTop: 10,
+              color: Theme.textPrimary,
             }}
           >
             Tap and hold on the marker to move your home location. This will be
@@ -279,7 +280,7 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10 }}>
+            <Text style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}>
               Use home location
             </Text>
             <View
@@ -302,7 +303,7 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10 }}>
+            <Text style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}>
               Minimum distance
             </Text>
             <View
@@ -351,7 +352,7 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10 }}>
+            <Text style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}>
               Maximum distance
             </Text>
             <View

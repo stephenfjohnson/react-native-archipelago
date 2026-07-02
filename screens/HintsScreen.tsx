@@ -160,7 +160,9 @@ export default function HintsScreen() {
     {
       label: "Entrance",
       key: "entrance",
-      render: (entrance: string) => <Text>{entrance}</Text>,
+      render: (entrance: string) => (
+        <Text style={{ color: Theme.textPrimary }}>{entrance}</Text>
+      ),
       sortable: true,
     },
     {
@@ -185,8 +187,8 @@ export default function HintsScreen() {
         columns={columns}
         keyExtractor="location"
         sortingIcons={{
-          asc: <Text>↑</Text>,
-          desc: <Text>↓</Text>,
+          asc: <Text style={{ color: Theme.textPrimary }}>↑</Text>,
+          desc: <Text style={{ color: Theme.textPrimary }}>↓</Text>,
         }}
         borderStyle={{
           showVertical: true,

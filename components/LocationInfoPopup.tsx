@@ -340,17 +340,19 @@ export default function LocationInfoPopup({
               marginBottom: 10,
             }}
           >
-            <Text>{locationInfo.name}</Text>
+            <Text style={{ color: Theme.textPrimary }}>
+              {locationInfo.name}
+            </Text>
           </View>
           {locationHint && (
-            <Text style={{ marginBottom: 10 }}>
+            <Text style={{ marginBottom: 10, color: Theme.textPrimary }}>
               {locationHint.receivingPlayer}'s {locationHint.item} can be found
               here.
             </Text>
           )}
           {!locationHint && (
             <>
-              <Text style={{ marginBottom: 10 }}>
+              <Text style={{ marginBottom: 10, color: Theme.textPrimary }}>
                 {canHint && "This location can be hinted. "}A hint requires{" "}
                 {client.room.hintCost} hint points. You currently have{" "}
                 {client.room.hintPoints}.
@@ -375,7 +377,7 @@ export default function LocationInfoPopup({
           )}
           {locationInfo.keysNeeded > 0 && (
             <>
-              <Text style={{ marginBottom: 10 }}>
+              <Text style={{ marginBottom: 10, color: Theme.textPrimary }}>
                 This location requires {locationInfo.keysNeeded} keys, and you
                 currently have {receivedKeys}
               </Text>

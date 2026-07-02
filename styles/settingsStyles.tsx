@@ -17,5 +17,8 @@ const settingsStyles = StyleSheet.create({
     elevation: 2,
     marginBottom: 3,
   },
+  name: {
+    color: Theme.textPrimary,
+  },
 });
 export default settingsStyles;
