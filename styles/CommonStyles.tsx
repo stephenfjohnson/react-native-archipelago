@@ -20,6 +20,11 @@ const commonStyles = StyleSheet.create({
     elevation: 3,
     backgroundColor: "rgba(51, 51, 51, 1)",
   },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   touchableHighlightButtonText: {
     fontSize: 12,
     lineHeight: 21,

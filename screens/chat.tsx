@@ -234,7 +234,7 @@ export default function Chat({
         nestedScrollEnabled
       >
         {messages.map((message, index) => (
-          <>
+          <React.Fragment key={`message-${index}`}>
             {index !== 0 && (
               <View
                 style={{
@@ -243,12 +243,8 @@ export default function Chat({
                 key={`message-${index}-border`}
               ></View>
             )}
-            <ChatLine
-              message={message}
-              index={index}
-              key={`message-${index}`}
-            />
-          </>
+            <ChatLine message={message} index={index} />
+          </React.Fragment>
         ))}
       </ScrollView>
       <View style={chatStyles.chatInputBox}>
