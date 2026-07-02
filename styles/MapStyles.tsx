@@ -1,5 +1,7 @@
 import { StyleSheet } from "react-native";
 
+import Theme from "./Theme";
+
 const mapStyles = StyleSheet.create({
   container: {
     flex: 1,
@@ -13,11 +15,13 @@ const mapStyles = StyleSheet.create({
     top: 60,
     right: 12,
     zIndex: 1000,
-    backgroundColor: "white",
+    backgroundColor: Theme.glassFill,
+    borderWidth: 1,
+    borderColor: Theme.glassBorder,
     padding: 8,
-    borderRadius: 1,
+    borderRadius: Theme.radius.md,
     elevation: 10,
-    opacity: 0.75,
+    opacity: 0.95,
     borderBlockColor: "lightgray",
   },
   apButton: {
@@ -25,12 +29,14 @@ const mapStyles = StyleSheet.create({
     top: 12,
     right: 60,
     zIndex: 1000,
-    backgroundColor: "white",
+    backgroundColor: Theme.glassFill,
+    borderWidth: 1,
+    borderColor: Theme.glassBorder,
     padding: 8,
     paddingTop: 7,
-    borderRadius: 1,
+    borderRadius: Theme.radius.md,
     elevation: 10,
-    opacity: 0.75,
+    opacity: 0.95,
     borderBlockColor: "lightgray",
   },
   apLogo: {

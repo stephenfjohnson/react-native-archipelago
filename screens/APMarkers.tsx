@@ -1,18 +1,12 @@
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { useIsFocused } from "@react-navigation/native";
 import React, { memo, useContext, useEffect, useRef, useState } from "react";
-import { Image, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Callout, Circle, MapMarker, Marker } from "react-native-maps";
 
 import { trip } from "./MapScreen";
+import GlassMarker, { markerStatus } from "../components/glass/GlassMarker";
 import { SettingsContext } from "../components/SettingsContext";
-
-const getMarker = (canCheck: boolean, hinted: boolean) => {
-  if (canCheck && hinted) return require("../assets/APMarker_Hint.png");
-  else if (canCheck) return require("../assets/APMarker_blue.png");
-  else if (hinted) return require("../assets/APMarker_Hint_gray.png");
-  else return require("../assets/APMarker_gray.png");
-};
 
 const MemoizedMarker = memo(function APMarker({
   trip,
@@ -74,8 +68,8 @@ const MemoizedMarker = memo(function APMarker({
       <Circle
         center={{ latitude: trip.coords.lat, longitude: trip.coords.lon }}
         radius={MARKER_RADIUS - 1}
-        strokeColor="#4285F4"
-        fillColor="#4285F450"
+        strokeColor="#B026FF"
+        fillColor="#B026FF33"
         key={`${trip.coords.lat}&${trip.coords.lon}-circle`}
       />
       <Marker
@@ -84,12 +78,7 @@ const MemoizedMarker = memo(function APMarker({
         tracksViewChanges={false} //android only
         ref={(ref) => (markerRef.current = ref)}
       >
-        <Image
-          source={getMarker(canCheck, hinted)}
-          style={{ width: 50, height: 50 }}
-          resizeMode="center"
-          resizeMethod="resize"
-        />
+        <GlassMarker status={markerStatus(canCheck, hinted)} />
 
         <Callout style={{ width: 350 }} onPress={() => handleShowPopup(trip)}>
           {/* TODO: Figure out using a CalloutSubview here, or using apple maps instead of google maps for iOS support */}

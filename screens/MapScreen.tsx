@@ -20,7 +20,6 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
-  Image,
   Pressable,
   Text,
   View,
@@ -39,11 +38,14 @@ import getLocations from "../utils/getLocations";
 import handleItems, { GOAL_MAP, MAP_ID_TO_ITEM } from "../utils/handleItems";
 import { STORAGE_TYPES, load, save } from "../utils/storageHandler";
 import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { getBannedLocations } from "./BannedLocations";
 import Colors from "../styles/Colors";
 import commonStyles from "../styles/CommonStyles";
 import APInfoPopup from "../components/APInfoPopup";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import mapDarkStyle from "../styles/mapDarkStyle";
+import Theme from "../styles/Theme";
 
 /**
  * This class is used to send location ids from the geofencing to the react code
@@ -125,6 +127,8 @@ function MemoizedMap({
       userLocationUpdateInterval={1000}
       showsUserLocation
       onMapReady={onMapReady}
+      customMapStyle={mapDarkStyle}
+      userInterfaceStyle="dark"
     >
       {children}
     </MapView>
@@ -838,10 +842,7 @@ export default function MapScreen({
         }}
         disabled={generating}
       >
-        <Image
-          style={mapStyles.apLogo}
-          source={require("../assets/black-icon.png")}
-        ></Image>
+        <Ionicons name="planet" size={22} color={Theme.accentBright} />
       </Pressable>
       <LocationInfoPopup
         visible={showPopup}
