@@ -1,9 +1,11 @@
 import { StyleSheet } from "react-native";
 
+import Theme from "./Theme";
+
 const mainStyles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Theme.bg,
     alignItems: "center",
     height: "100%",
   },
@@ -11,7 +13,7 @@ const mainStyles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    borderColor: "black",
+    borderColor: Theme.glassBorder,
   },
 });
 export default mainStyles;

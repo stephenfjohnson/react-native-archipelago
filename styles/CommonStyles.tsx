@@ -1,24 +1,33 @@
 import { StyleSheet } from "react-native";
 
+import Theme from "./Theme";
+
 const commonStyles = StyleSheet.create({
   textInput: {
     minWidth: "50%",
-    height: 40,
+    height: 44,
     margin: 12,
     borderWidth: 1,
-    padding: 10,
+    borderColor: Theme.glassBorder,
+    borderRadius: Theme.radius.sm,
+    padding: 12,
+    backgroundColor: Theme.glassFill,
+    color: Theme.textPrimary,
   },
   inputLabel: {
     fontSize: 20,
+    color: Theme.textPrimary,
   },
   touchableHighlightButton: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-    elevation: 3,
-    backgroundColor: "rgba(51, 51, 51, 1)",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: Theme.radius.sm,
+    borderWidth: 1,
+    borderColor: Theme.accent,
+    backgroundColor: Theme.accentDim,
+    ...Theme.glow(Theme.accentGlow),
   },
   buttonContent: {
     flexDirection: "row",
@@ -26,37 +35,34 @@ const commonStyles = StyleSheet.create({
     justifyContent: "center",
   },
   touchableHighlightButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 21,
     fontWeight: "bold",
     letterSpacing: 0.25,
-    color: "white",
+    color: Theme.textPrimary,
   },
   centeredView: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 22,
+    backgroundColor: Theme.overlay,
   },
   modalView: {
     margin: 20,
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 35,
+    backgroundColor: Theme.surface,
+    borderRadius: Theme.radius.lg,
+    borderWidth: 1,
+    borderColor: Theme.glassBorder,
+    padding: 28,
     alignItems: "center",
     alignContent: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    ...Theme.glow(Theme.accentGlow),
   },
   modalText: {
     marginBottom: 15,
     textAlign: "center",
+    color: Theme.textPrimary,
   },
   modalButtonContainer: {
     flexDirection: "row",

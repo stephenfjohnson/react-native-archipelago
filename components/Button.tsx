@@ -34,6 +34,7 @@ export default function Button({
   return (
     <TouchableHighlight
       style={{ ...commonStyles.touchableHighlightButton, ...buttonStyle }}
+      underlayColor={"#8E24C9"}
       onPress={onPress}
       {...buttonProps}
     >
