@@ -1,3 +1,6 @@
 patchedDependencies:
   archipelago.js: patches/archipelago.js.patch
   "@coligo/react-native-table": patches/@coligo__react-native-table.patch
+
+overrides:
+  "@react-navigation/elements": "2.9.3"
