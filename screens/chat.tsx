@@ -243,7 +243,11 @@ export default function Chat({
                 key={`message-${index}-border`}
               ></View>
             )}
-            <ChatLine message={message} index={index} />
+            <ChatLine
+              message={message}
+              index={index}
+              key={`message-${index}-line`}
+            />
           </React.Fragment>
         ))}
       </ScrollView>
