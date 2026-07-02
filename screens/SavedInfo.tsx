@@ -52,7 +52,14 @@ const ListItem = ({
         connectToAp(item);
       }}
     >
-      <>
+      <View
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-around",
+        }}
+      >
         <Text style={{ fontSize, flex: 8 }}>{item}</Text>
         <Button
           text=""
@@ -72,7 +79,7 @@ const ListItem = ({
           buttonStyle={{ flex: 1, marginLeft: 10 }}
           endIcon={<AntDesign name="delete" size={20} color="white" />}
         />
-      </>
+      </View>
     </TouchableHighlight>
   );
 };
