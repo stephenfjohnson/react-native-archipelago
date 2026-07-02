@@ -1,6 +1,6 @@
 // In App.js in a new project
 
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
@@ -16,6 +16,7 @@ import ConnectTabs from "./screens/ConnectTabs";
 import Connected from "./screens/Connected";
 import structuredClone from "@ungap/structured-clone";
 import BannedLocations from "./screens/BannedLocations";
+import Theme from "./styles/Theme";
 require("react-native-get-random-values");
 
 if (!("structuredClone" in globalThis)) {
@@ -33,9 +34,21 @@ function App() {
       <ErrorContextProvider>
         <ClientContextProvider>
           <SettingsContextProvider>
-            <View style={{ flex: 15 }}>
-              <StatusBar style="dark" />
-              <NavigationContainer>
+            <View style={{ flex: 15, backgroundColor: Theme.bg }}>
+              <StatusBar style="light" />
+              <NavigationContainer
+                theme={{
+                  ...DarkTheme,
+                  colors: {
+                    ...DarkTheme.colors,
+                    background: Theme.bg,
+                    card: Theme.bg,
+                    text: Theme.textPrimary,
+                    primary: Theme.accent,
+                    border: Theme.glassBorder,
+                  },
+                }}
+              >
                 <Stack.Navigator
                   initialRouteName="connect"
                   screenOptions={{ header: EmptyHeader }}

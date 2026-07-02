@@ -1,7 +1,9 @@
 import {
-  createMaterialTopTabNavigator,
-  MaterialTopTabBarProps,
-} from "@react-navigation/material-top-tabs";
+  createBottomTabNavigator,
+  BottomTabNavigationProp,
+} from "@react-navigation/bottom-tabs";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { glassTabScreenOptions } from "../components/glass/GlassTabBarBackground";
 import { PrintJSONPacket } from "archipelago.js";
 import * as Location from "expo-location";
 import React, { useContext, useEffect, useRef, useState } from "react";
@@ -15,7 +17,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import MapScreen from "./MapScreen";
 import Chat, { messages } from "./chat";
@@ -28,7 +29,7 @@ import Colors from "../styles/Colors";
 import playAudio from "../utils/playAudio";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 
-const Tab = createMaterialTopTabNavigator();
+const Tab = createBottomTabNavigator();
 
 export default function Connected({
   route,
@@ -37,7 +38,7 @@ export default function Connected({
   route: {
     params: { sessionName: string };
   };
-  navigation: MaterialTopTabBarProps["navigation"];
+  navigation: BottomTabNavigationProp<any>;
 }>) {
   const { sessionName } = route.params;
   const { client, connectionInfoRef } = useContext(ClientContext);
@@ -53,7 +54,6 @@ export default function Connected({
 
   const [messages, setMessages] = useState<messages>([]);
 
-  const insets = useSafeAreaInsets();
   const { setError } = useContext(ErrorContext);
   const [allowedLocation, setAllowedLocation] = useState(false);
   const retryCountRef = useRef<number>(0);
@@ -340,10 +340,16 @@ export default function Connected({
   return (
     <Tab.Navigator
       initialRouteName="Chat"
-      style={{ paddingTop: insets.top }}
-      screenOptions={{ swipeEnabled: false }}
+      screenOptions={{ ...glassTabScreenOptions, tabBarHideOnKeyboard: true }}
     >
-      <Tab.Screen name="Chat">
+      <Tab.Screen
+        name="Chat"
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble-ellipses" color={color} size={size} />
+          ),
+        }}
+      >
         {(props) => (
           <ScrollView
             refreshControl={
@@ -372,7 +378,14 @@ export default function Connected({
         )}
       </Tab.Screen>
       {allowedLocation && (
-        <Tab.Screen name="Map">
+        <Tab.Screen
+          name="Map"
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="map" color={color} size={size} />
+            ),
+          }}
+        >
           {(props) => (
             <>
               {lostConnection && (
@@ -409,7 +422,15 @@ export default function Connected({
           )}
         </Tab.Screen>
       )}
-      <Tab.Screen name="Hints" component={HintsScreen} />
+      <Tab.Screen
+        name="Hints"
+        component={HintsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bulb" color={color} size={size} />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }
