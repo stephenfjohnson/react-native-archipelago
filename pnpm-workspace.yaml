@@ -1,0 +1,3 @@
+patchedDependencies:
+  archipelago.js: patches/archipelago.js.patch
+  "@coligo/react-native-table": patches/@coligo__react-native-table.patch

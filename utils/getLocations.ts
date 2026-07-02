@@ -4,13 +4,35 @@ import { locationInfo } from "../components/LocationInfoPopup";
 const DISTANCE_LENIENCY = 0.1;
 
 /**
+ * Overpass API endpoints, tried in order. If one is down, overloaded, or
+ * unreachable, the next is used as a fallback so generation keeps working.
+ * See https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances
+ *
+ * Note: both instances advertise IPv6. On a network with broken IPv6 routing,
+ * React Native's fetch tries IPv6 first and fails with "Network request failed"
+ * without falling back to IPv4 (unlike curl/browsers), so all endpoints fail.
+ * If generation fails only on one network, check that its IPv6 works.
+ */
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.openstreetmap.fr/api/interpreter",
+];
+
+/** Abort a single Overpass request if it hasn't responded in time. */
+const OVERPASS_TIMEOUT_MS = 15000;
+
+/**
+ * Maximum number of times we re-roll coordinates when Overpass returns nothing
+ * (endpoint unavailable, or no matching road near the random point) before
+ * giving up and returning a "0" result to the caller.
+ */
+const MAX_GENERATION_RETRIES = 30;
+
+/**
  * Wait provided amount of time (in milliseconds)
  */
-const wait = async (time: number) => {
-  setTimeout(() => {
-    return;
-  }, time);
-};
+const wait = (time: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, time));
 
 /**
  * Return a openstreetmaps 'lookup' API url
@@ -63,16 +85,44 @@ const fetchOverpassInfo = async (
   );
   >;
   out skel;`;
-  const data = await fetch("https://overpass.private.coffee/api/interpreter", {
-    method: "POST",
-    body: "data=" + encodeURIComponent(query),
-    referrer: "com.aki665.archipelago",
-    headers: { "user-agent": "archipela-go/0.7.0" },
-  });
-  const res: {
-    elements: [{ type: string; id: number; lat: number; lon: number }];
-  } = await data.json();
-  return res.elements;
+  let lastError: unknown = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+    try {
+      const data = await fetch(endpoint, {
+        method: "POST",
+        body: "data=" + encodeURIComponent(query),
+        referrer: "com.aki665.archipelago",
+        headers: { "user-agent": "archipela-go/0.7.0" },
+        signal: controller.signal,
+      });
+      // A busy/overloaded instance returns an HTML error page, not JSON, so
+      // bail out to the next endpoint instead of letting data.json() throw.
+      if (!data.ok) {
+        throw new Error(
+          `Overpass endpoint ${endpoint} returned HTTP ${data.status}`,
+        );
+      }
+      const res: {
+        elements: [{ type: string; id: number; lat: number; lon: number }];
+      } = await data.json();
+      // Log the RESOLVED body, not the Promise. In React Native,
+      // console.log(data.json()) prints a pending Promise ({_h,_i,_j,_k}),
+      // which is not the response content — always await first.
+      console.log(
+        `Overpass ${endpoint} OK: ${res.elements?.length ?? 0} elements`,
+      );
+      return res.elements;
+    } catch (e) {
+      lastError = e;
+      console.log(`Overpass endpoint failed (${endpoint}):`, e);
+      await wait(500);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw lastError ?? new Error("All Overpass endpoints failed");
 };
 
 /**
@@ -243,6 +293,7 @@ async function getLocationCoordinates(
   minimum_distance = 0,
   correction = 0,
   loop_count = 0,
+  fail_count = 0,
 ): Promise<{
   newLatitude: number;
   newLongitude: number;
@@ -271,6 +322,19 @@ async function getLocationCoordinates(
     minDist,
   );
   if (res.osmID === "0") {
+    // No usable road came back. This happens either because Overpass is
+    // unavailable or because the random point had no matching road nearby.
+    // Re-roll a bounded number of times (with a small delay so we don't hammer
+    // the API) and otherwise give up, returning "0" so the caller can react.
+    if (fail_count >= MAX_GENERATION_RETRIES) {
+      console.log(
+        "Giving up generating coordinates after",
+        fail_count,
+        "failed attempts (Overpass unavailable or no matching roads nearby).",
+      );
+      return res;
+    }
+    await wait(250);
     res = await getLocationCoordinates(
       latitude,
       longitude,
@@ -283,6 +347,7 @@ async function getLocationCoordinates(
       minimum_distance,
       correction,
       loop_count,
+      fail_count + 1,
     );
   }
   const calculatedResult = Math.round(
