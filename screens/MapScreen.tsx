@@ -396,13 +396,18 @@ export default function MapScreen({
         sessionName + "_candidates",
         STORAGE_TYPES.OBJECT,
       );
-      if (!candidates) {
+      if (!candidates || candidates.length === 0) {
         candidates = await fetchRoadCandidates(
           { lat: loc.latitude, lon: loc.longitude },
           parseInt(JSON.stringify(slotData.current?.maximum_distance), 10),
           bannedOsmIDs,
         );
-        if (candidates && sessionName && sessionName !== "") {
+        if (
+          candidates &&
+          candidates.length > 0 &&
+          sessionName &&
+          sessionName !== ""
+        ) {
           await save(
             candidates,
             sessionName + "_candidates",
@@ -575,14 +580,19 @@ export default function MapScreen({
       sessionName + "_candidates",
       STORAGE_TYPES.OBJECT,
     );
-    if (!candidates) {
+    if (!candidates || candidates.length === 0) {
       setGeneratingStatus("Loading roads for the area...");
       candidates = await fetchRoadCandidates(
         { lat: loc.latitude, lon: loc.longitude },
         parseInt(JSON.stringify(data.maximum_distance), 10),
         bannedOsmIDs,
       );
-      if (candidates && sessionName && sessionName !== "") {
+      if (
+        candidates &&
+        candidates.length > 0 &&
+        sessionName &&
+        sessionName !== ""
+      ) {
         await save(
           candidates,
           sessionName + "_candidates",

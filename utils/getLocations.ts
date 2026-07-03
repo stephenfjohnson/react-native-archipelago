@@ -6,7 +6,6 @@ import {
   calculateTheta,
   computeBbox,
   placeTrip,
-  selectCandidate,
 } from "./placement";
 import type { Candidate, LatLon } from "./placement";
 
