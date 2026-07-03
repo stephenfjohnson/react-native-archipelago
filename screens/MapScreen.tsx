@@ -41,7 +41,8 @@ import {
   pickRandomTrap,
   metersBetween,
 } from "../utils/deathLink";
-import getLocations from "../utils/getLocations";
+import getLocations, { fetchRoadCandidates } from "../utils/getLocations";
+import type { Candidate } from "../utils/placement";
 import handleItems, { GOAL_MAP, MAP_ID_TO_ITEM } from "../utils/handleItems";
 import { STORAGE_TYPES, load, save } from "../utils/storageHandler";
 import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -391,6 +392,24 @@ export default function MapScreen({
           .map((location) => location.osmID)
           .filter((osmID) => osmID.startsWith("N")),
       );
+      let candidates: Candidate[] | null = await load(
+        sessionName + "_candidates",
+        STORAGE_TYPES.OBJECT,
+      );
+      if (!candidates) {
+        candidates = await fetchRoadCandidates(
+          { lat: loc.latitude, lon: loc.longitude },
+          parseInt(JSON.stringify(slotData.current?.maximum_distance), 10),
+          bannedOsmIDs,
+        );
+        if (candidates && sessionName && sessionName !== "") {
+          await save(
+            candidates,
+            sessionName + "_candidates",
+            STORAGE_TYPES.OBJECT,
+          );
+        }
+      }
       rerollAllowedRef.current = false;
       const oldTrip: trip = trips.find((trip: trip) => trip.id === id);
       const filteredTrips = removeCheckedLocations(trips, [id]);
@@ -405,6 +424,7 @@ export default function MapScreen({
         MAX_RADIAN,
         MIN_RADIAN,
         bannedOsmIDs,
+        candidates,
       );
       const isDuplicate = trips.some(
         (value) =>
@@ -551,6 +571,25 @@ export default function MapScreen({
         .map((location) => location.osmID)
         .filter((osmID) => osmID.startsWith("N")),
     );
+    let candidates: Candidate[] | null = await load(
+      sessionName + "_candidates",
+      STORAGE_TYPES.OBJECT,
+    );
+    if (!candidates) {
+      setGeneratingStatus("Loading roads for the area...");
+      candidates = await fetchRoadCandidates(
+        { lat: loc.latitude, lon: loc.longitude },
+        parseInt(JSON.stringify(data.maximum_distance), 10),
+        bannedOsmIDs,
+      );
+      if (candidates && sessionName && sessionName !== "") {
+        await save(
+          candidates,
+          sessionName + "_candidates",
+          STORAGE_TYPES.OBJECT,
+        );
+      }
+    }
     if (loadedTrips === null && data.trips != null) {
       let index = 0;
       const tripAmount = Object.entries(data.trips).length;
@@ -597,6 +636,7 @@ export default function MapScreen({
             MAX_RADIAN,
             MIN_RADIAN,
             bannedOsmIDs,
+            candidates,
           );
           generatingCoords = tempTrips.some(
             (value) =>
@@ -645,6 +685,7 @@ export default function MapScreen({
           MAX_RADIAN,
           MIN_RADIAN,
           bannedOsmIDs,
+          candidates,
         );
         newCoords.duplicate = filteredTrips.some(
           (value) =>
