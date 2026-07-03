@@ -48,6 +48,35 @@ function SettingItem({
 }>) {
   const [settingState, setSettingState] = useState(setting.value);
 
+  if (setting.options) {
+    return (
+      <View style={styles.segment}>
+        {setting.options.map((opt) => {
+          const selected = settingState === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => {
+                setSettingState(opt.value);
+                onChange(opt.value, setting.name);
+              }}
+              style={[styles.segmentItem, selected && styles.segmentItemActive]}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  selected && styles.segmentTextActive,
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  }
+
   if (typeof setting.value === "string") {
     return (
       <TextInput
@@ -302,5 +331,28 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.glassFill,
     color: Theme.textPrimary,
     fontSize: 16,
+  },
+  segment: {
+    flexDirection: "row",
+    borderRadius: Theme.radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Theme.glassBorder,
+    backgroundColor: Theme.glassFill,
+    overflow: "hidden",
+  },
+  segmentItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  segmentItemActive: {
+    backgroundColor: Theme.accent,
+  },
+  segmentText: {
+    fontSize: 14,
+    color: Theme.textSecondary,
+  },
+  segmentTextActive: {
+    color: "#ffffff",
+    fontWeight: "700",
   },
 });
