@@ -4,7 +4,9 @@ import {
   deg2rad,
   getDistanceFromLatLonInKm,
   calculateTheta,
+  computeBbox,
 } from "./placement";
+import type { Candidate, LatLon } from "./placement";
 
 export { getDistanceFromLatLonInKm } from "./placement";
 
@@ -27,6 +29,10 @@ const OVERPASS_ENDPOINTS = [
 
 /** Abort a single Overpass request if it hasn't responded in time. */
 const OVERPASS_TIMEOUT_MS = 15000;
+
+/** Above this max distance the single-area query is skipped in favor of the
+ *  per-location fallback (avoids an enormous bbox / oversized Overpass query). */
+export const AREA_QUERY_MAX_DISTANCE_M = 10000;
 
 /**
  * Maximum number of times we re-roll coordinates when Overpass returns nothing
@@ -126,6 +132,93 @@ const fetchOverpassInfo = async (latitude: number, longitude: number) => {
   }
   throw lastError ?? new Error("All Overpass endpoints failed");
 };
+
+/**
+ * One Overpass query over the whole play area. Returns every road NODE (with
+ * lat/lon) belonging to a matching way in the bbox, minus banned nodes, so the
+ * caller can place all trips locally without further network calls. Returns null
+ * when the area is too large or all endpoints fail — the caller then falls back
+ * to the per-location generator.
+ */
+export async function fetchRoadCandidates(
+  origin: LatLon,
+  maxDistanceMeters: number,
+  bannedOsmIDs: Set<string>,
+): Promise<Candidate[] | null> {
+  if (maxDistanceMeters > AREA_QUERY_MAX_DISTANCE_M) {
+    console.log(
+      `Area ${maxDistanceMeters}m exceeds ${AREA_QUERY_MAX_DISTANCE_M}m; using per-location fallback.`,
+    );
+    return null;
+  }
+  const b = computeBbox(origin, maxDistanceMeters);
+  // Overpass estimates cost from area; hint timeout/maxsize so it schedules well.
+  const areaKm2 = Math.max(1, Math.PI * (maxDistanceMeters / 1000) ** 2);
+  const timeout = Math.min(180, Math.max(25, Math.ceil(areaKm2 * 2)));
+  const query = `[bbox:${b.south},${b.west},${b.north},${b.east}][timeout:${timeout}][out:json];
+  (
+    way["tracktype"="grade1"];
+    way["tracktype"="grade2"];
+    way["tracktype"="grade3"];
+    way["highway"="residential"];
+    way["highway"="living_street"];
+    way["highway"="pedestrian"];
+    way["highway"="track"];
+    way["highway"="footway"];
+    way["highway"="bridleway"];
+    way["highway"="steps"];
+    way["highway"="cycleway"];
+    way["highway"="service"];
+    way["highway"="secondary"]["maxspeed:type"~":urban"];
+    way["highway"="tertiary"]["maxspeed:type"~":urban"];
+    way["highway"="secondary"]["maxspeed"~"^[0-5][0-9]?$"];
+    way["highway"="tertiary"]["maxspeed"~"^[0-5][0-9]?$"];
+    way["highway"="secondary"]["maxspeed"~"^[0-3][0-9]? mph$"];
+    way["highway"="tertiary"]["maxspeed"~"^[0-3][0-9]? mph$"];
+  )->.roads;
+  node(w.roads);
+  out skel qt;`;
+
+  let lastError: unknown = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+    try {
+      const data = await fetch(endpoint, {
+        method: "POST",
+        body: "data=" + encodeURIComponent(query),
+        referrer: "com.aki665.archipelago",
+        headers: { "user-agent": "archipela-go/0.7.0" },
+        signal: controller.signal,
+      });
+      if (!data.ok) {
+        throw new Error(`Overpass ${endpoint} returned HTTP ${data.status}`);
+      }
+      const res: {
+        elements: { type: string; id: number; lat: number; lon: number }[];
+      } = await data.json();
+      const candidates: Candidate[] = [];
+      for (const el of res.elements) {
+        if (el.type !== "node" || el.lat == null || el.lon == null) continue;
+        const osmID = el.type[0].toUpperCase() + el.id;
+        if (bannedOsmIDs.has(osmID)) continue;
+        candidates.push({ osmID, lat: el.lat, lon: el.lon });
+      }
+      console.log(
+        `Overpass area ${endpoint} OK: ${candidates.length} candidate nodes`,
+      );
+      return candidates;
+    } catch (e) {
+      lastError = e;
+      console.log(`Overpass area endpoint failed (${endpoint}):`, e);
+      await wait(500);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  console.log("All Overpass area endpoints failed:", lastError);
+  return null;
+}
 
 /**
  * Calculates a random latitude and longitude a certain distance away from given coordinates
