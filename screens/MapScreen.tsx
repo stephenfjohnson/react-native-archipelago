@@ -528,12 +528,22 @@ export default function MapScreen({
       loc.latitude = HOME_LOCATION.latitude;
       loc.longitude = HOME_LOCATION.longitude;
     }
+    // Persist the generation origin ONCE per session so Respawn always anchors
+    // to where the trips were generated — not to wherever the app was later
+    // reopened. On a brand-new session this runs during first generation (loc is
+    // the true origin); on later launches _origin already exists and is kept.
     if (sessionName && sessionName !== "") {
-      await save(
-        { latitude: loc.latitude, longitude: loc.longitude },
+      const existingOrigin = await load(
         sessionName + "_origin",
         STORAGE_TYPES.OBJECT,
       );
+      if (!existingOrigin) {
+        await save(
+          { latitude: loc.latitude, longitude: loc.longitude },
+          sessionName + "_origin",
+          STORAGE_TYPES.OBJECT,
+        );
+      }
     }
     const bannedLocations = await getBannedLocations();
     const bannedOsmIDs = new Set(
