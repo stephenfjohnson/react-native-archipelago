@@ -389,11 +389,7 @@ describe("placeTrip — floor property test", () => {
         new Set(),
       );
       if (placed) {
-        const d =
-          require("./placement").metersBetween(ORIGIN, {
-            lat: placed.lat,
-            lon: placed.lon,
-          });
+        const d = metersBetween(ORIGIN, { lat: placed.lat, lon: placed.lon });
         expect(d).toBeGreaterThanOrEqual(minDist - 0.001);
         expect(d).toBeLessThanOrEqual(maxDist + 0.001);
       }
