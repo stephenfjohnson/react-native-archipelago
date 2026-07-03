@@ -35,7 +35,11 @@ import LocationInfoPopup, {
 } from "../components/LocationInfoPopup";
 import { findSetting, SettingsContext } from "../components/SettingsContext";
 import mapStyles from "../styles/MapStyles";
-import { DEATH_LINK_MODES, DeathLinkMode } from "../utils/deathLink";
+import {
+  DEATH_LINK_MODES,
+  DeathLinkMode,
+  pickRandomTrap,
+} from "../utils/deathLink";
 import getLocations from "../utils/getLocations";
 import handleItems, { GOAL_MAP, MAP_ID_TO_ITEM } from "../utils/handleItems";
 import { STORAGE_TYPES, load, save } from "../utils/storageHandler";
@@ -316,6 +320,8 @@ export default function MapScreen({
   const [macguffinString, setMacguffinString] =
     useState<string>("Archipela-Go!");
   const [goalAchieved, setGoalAchieved] = useState<boolean>(false);
+  const goalAchievedRef = useRef(goalAchieved);
+  goalAchievedRef.current = goalAchieved;
   const [hintedProgTrips, setHintedProgTrips] = useState<number[]>([0]);
   const [refresh, setRefresh] = useState<boolean>(false);
   const [generating, setGenerating] = useState(true);
@@ -702,6 +708,30 @@ export default function MapScreen({
     }
   };
 
+  // Filled in by Task 4. Kept as a no-op stub so Trap mode ships independently.
+  const triggerRespawn = (_source: string, _cause?: string) => {
+    console.log("Respawn mode not yet implemented");
+  };
+
+  const handleDeathReceived = (
+    source: string,
+    _time: number,
+    cause?: string,
+  ) => {
+    const mode = deathLinkModeRef.current;
+    if (mode === DEATH_LINK_MODES.OFF) return;
+    if (goalAchievedRef.current) return;
+    if (mode === DEATH_LINK_MODES.TRAP) {
+      const trap = pickRandomTrap();
+      const who = cause && cause.trim() ? cause.trim() : `${source} died.`;
+      Alert.alert("DeathLink!", `${who}\n\nTrap received: ${trap}`);
+      return;
+    }
+    if (mode === DEATH_LINK_MODES.RESPAWN) {
+      triggerRespawn(source, cause);
+    }
+  };
+
   const handleReconnect = async () => {
     handleReroll();
 
@@ -762,6 +792,7 @@ export default function MapScreen({
     locationEmitter.current.on("locationEntered", handleGeofenceEnter);
     client.socket.on("connected", applyDeathLinkTag);
     applyDeathLinkTag();
+    client.deathLink.on("deathReceived", handleDeathReceived);
 
     console.log(
       "client.items.received.length",
@@ -794,6 +825,7 @@ export default function MapScreen({
       client.socket.off("roomUpdate", roomUpdateListener);
       client.socket.off("receivedItems", receivedItemsListener);
       client.socket.off("connected", applyDeathLinkTag);
+      client.deathLink.off("deathReceived", handleDeathReceived);
       if (rerollTimer.current != null) clearTimeout(rerollTimer.current);
     };
   }, []);
@@ -869,6 +901,16 @@ export default function MapScreen({
       >
         <Ionicons name="planet" size={22} color={Theme.accentBright} />
       </Pressable>
+      {__DEV__ && (
+        <Pressable
+          style={[mapStyles.refreshButton, { top: insets.top + 60 }]}
+          onPress={() =>
+            handleDeathReceived("TEST", Date.now(), "Test death (dev trigger)")
+          }
+        >
+          <MaterialCommunityIcons name="skull" size={22} color={Theme.danger} />
+        </Pressable>
+      )}
       <LocationInfoPopup
         visible={showPopup}
         closePopup={closePopup}
