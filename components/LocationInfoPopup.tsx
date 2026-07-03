@@ -48,6 +48,7 @@ export default function LocationInfoPopup({
   rerollAllowed,
   rerollTime,
   setLocationAsFound,
+  respawning,
 }: Readonly<{
   visible: boolean;
   closePopup: () => void;
@@ -58,6 +59,7 @@ export default function LocationInfoPopup({
   rerollAllowed: React.MutableRefObject<boolean>;
   rerollTime: React.MutableRefObject<Date>;
   setLocationAsFound: (id: number) => void;
+  respawning: boolean;
 }>) {
   const [locationInfo, setLocationInfo] = useState<locationInfo | null>(null);
   const [locationHint, setLocationHint] = useState<locationHintInfo | null>(
@@ -212,6 +214,10 @@ export default function LocationInfoPopup({
   };
 
   const handleCheckLocation = async () => {
+    if (respawning) {
+      Alert.alert("You died", "Walk back home to respawn before collecting.");
+      return;
+    }
     if (locationInfo !== null) {
       const CAN_ALWAYS_SEND_LOCATION = getSetting(
         "CAN_ALWAYS_SEND_LOCATION",
@@ -422,14 +428,15 @@ export default function LocationInfoPopup({
               )}
             </>
           )}
-          {(getSetting("CAN_ALWAYS_SEND_LOCATION", "boolean") ||
-            receivedKeys >= locationInfo.keysNeeded) && (
-            <Button
-              onPress={() => handleCheckLocation()}
-              text="Check location"
-              buttonStyle={{ marginBottom: 10 }}
-            ></Button>
-          )}
+          {!respawning &&
+            (getSetting("CAN_ALWAYS_SEND_LOCATION", "boolean") ||
+              receivedKeys >= locationInfo.keysNeeded) && (
+              <Button
+                onPress={() => handleCheckLocation()}
+                text="Check location"
+                buttonStyle={{ marginBottom: 10 }}
+              ></Button>
+            )}
         </View>
       )}
     </Popup>

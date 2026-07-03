@@ -39,6 +39,7 @@ import {
   DEATH_LINK_MODES,
   DeathLinkMode,
   pickRandomTrap,
+  metersBetween,
 } from "../utils/deathLink";
 import getLocations from "../utils/getLocations";
 import handleItems, { GOAL_MAP, MAP_ID_TO_ITEM } from "../utils/handleItems";
@@ -294,6 +295,7 @@ export default function MapScreen({
   const { getSetting } = useContext(SettingsContext);
   const NEAR_ZOOM = getSetting("NEAR_ZOOM", "boolean");
   const MARKER_RADIUS = getSetting("MARKER_RADIUS", "number");
+  const RESPAWN_RADIUS = MARKER_RADIUS;
   const LOCATION_RETRIES = getSetting("LOCATION_RETRIES", "number");
   const MAX_RADIAN = getSetting("MAX_RADIAN", "number");
   const MIN_RADIAN = getSetting("MIN_RADIAN", "number");
@@ -322,6 +324,7 @@ export default function MapScreen({
   const [goalAchieved, setGoalAchieved] = useState<boolean>(false);
   const goalAchievedRef = useRef(goalAchieved);
   goalAchievedRef.current = goalAchieved;
+  const [respawning, setRespawning] = useState(false);
   const [hintedProgTrips, setHintedProgTrips] = useState<number[]>([0]);
   const [refresh, setRefresh] = useState<boolean>(false);
   const [generating, setGenerating] = useState(true);
@@ -337,6 +340,9 @@ export default function MapScreen({
   const locationEmitter = useRef(new LocationsEmitter());
   const deathLinkModeRef = useRef<DeathLinkMode>(DEATH_LINK_MODE);
   deathLinkModeRef.current = DEATH_LINK_MODE;
+  const respawningRef = useRef(false);
+  respawningRef.current = respawning;
+  const respawnWatch = useRef<Location.LocationSubscription | null>(null);
 
   const handleShowPopup = (trip: trip) => {
     setSelectedLocation(trip);
@@ -358,6 +364,10 @@ export default function MapScreen({
   };
 
   const handleGeofenceEnter = (id: number) => {
+    if (respawningRef.current) {
+      console.log("Ignoring geofence enter while respawning", id);
+      return;
+    }
     console.log("handleGeofenceEnter id", id);
     setCheckedLocations((prev) => [...prev, id]);
   };
@@ -517,6 +527,13 @@ export default function MapScreen({
     if (USE_HOME_LOCATION) {
       loc.latitude = HOME_LOCATION.latitude;
       loc.longitude = HOME_LOCATION.longitude;
+    }
+    if (sessionName && sessionName !== "") {
+      await save(
+        { latitude: loc.latitude, longitude: loc.longitude },
+        sessionName + "_origin",
+        STORAGE_TYPES.OBJECT,
+      );
     }
     const bannedLocations = await getBannedLocations();
     const bannedOsmIDs = new Set(
@@ -708,9 +725,61 @@ export default function MapScreen({
     }
   };
 
-  // Filled in by Task 4. Kept as a no-op stub so Trap mode ships independently.
-  const triggerRespawn = (_source: string, _cause?: string) => {
-    console.log("Respawn mode not yet implemented");
+  const startRespawnWatch = async () => {
+    if (respawnWatch.current) return;
+    const origin: { latitude: number; longitude: number } | null = await load(
+      sessionName + "_origin",
+      STORAGE_TYPES.OBJECT,
+    );
+    if (!origin) {
+      console.log("No saved origin; cannot anchor respawn.");
+      return;
+    }
+    respawnWatch.current = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, distanceInterval: 5 },
+      (pos) => {
+        if (metersBetween(pos.coords, origin) <= RESPAWN_RADIUS) {
+          void clearRespawn();
+        }
+      },
+    );
+  };
+
+  const clearRespawn = async () => {
+    respawnWatch.current?.remove();
+    respawnWatch.current = null;
+    setRespawning(false);
+    if (sessionName && sessionName !== "") {
+      await save(
+        { respawning: false },
+        sessionName + "_respawning",
+        STORAGE_TYPES.OBJECT,
+      );
+    }
+    geofenceLocations(
+      trips,
+      client,
+      receivedKeys,
+      receivedReductions,
+      MARKER_RADIUS,
+      locationEmitter.current,
+    );
+  };
+
+  const triggerRespawn = async (source: string, cause?: string) => {
+    if (respawningRef.current) return;
+    setRespawning(true);
+    if (sessionName && sessionName !== "") {
+      await save(
+        { respawning: true },
+        sessionName + "_respawning",
+        STORAGE_TYPES.OBJECT,
+      );
+    }
+    await removeGeofencing();
+    await startRespawnWatch();
+    const who = cause && cause.trim() ? cause.trim() : `${source} died.`;
+    Alert.alert("DeathLink!", `${who}\n\nWalk back home to respawn.`);
   };
 
   const handleDeathReceived = (
@@ -794,6 +863,15 @@ export default function MapScreen({
     applyDeathLinkTag();
     client.deathLink.on("deathReceived", handleDeathReceived);
 
+    load(sessionName + "_respawning", STORAGE_TYPES.OBJECT)
+      .then((saved) => {
+        if (saved?.respawning) {
+          setRespawning(true);
+          void startRespawnWatch();
+        }
+      })
+      .catch((e) => console.log(e));
+
     console.log(
       "client.items.received.length",
       client.items.received.length,
@@ -827,6 +905,7 @@ export default function MapScreen({
       client.socket.off("connected", applyDeathLinkTag);
       client.deathLink.off("deathReceived", handleDeathReceived);
       if (rerollTimer.current != null) clearTimeout(rerollTimer.current);
+      respawnWatch.current?.remove();
     };
   }, []);
 
@@ -845,10 +924,9 @@ export default function MapScreen({
   }, [receivedReductions]);
 
   useEffect(() => {
-    if (trips[0] === "placeholder") {
-      // don't do anything on first render
+    if (trips[0] === "placeholder" || respawning) {
+      // don't arm geofencing on first render or while respawning
     } else {
-      //removeGeofencing();
       geofenceLocations(
         trips,
         client,
@@ -858,7 +936,7 @@ export default function MapScreen({
         locationEmitter.current,
       );
     }
-  }, [receivedKeys, trips]);
+  }, [receivedKeys, trips, respawning]);
 
   useEffect(() => {
     setRefresh((prevState) => !prevState);
@@ -881,6 +959,33 @@ export default function MapScreen({
   const insets = useSafeAreaInsets();
   return (
     <View style={mapStyles.container}>
+      {respawning && (
+        <View
+          style={{
+            position: "absolute",
+            top: insets.top + 10,
+            left: 0,
+            right: 0,
+            alignItems: "center",
+            zIndex: 1200,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: Theme.surface,
+              borderWidth: 1,
+              borderColor: Theme.danger,
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+            }}
+          >
+            <Text style={{ color: Theme.textPrimary }}>
+              You died — walk back home to respawn.
+            </Text>
+          </View>
+        </View>
+      )}
       <Pressable
         style={[mapStyles.refreshButton, { top: insets.top + 10 }]}
         onPress={() => {
@@ -921,6 +1026,7 @@ export default function MapScreen({
         rerollAllowed={rerollAllowedRef}
         rerollTime={rerollTime}
         setLocationAsFound={handleGeofenceEnter}
+        respawning={respawning}
       />
       <APInfoPopup
         visible={showAPPopup}
