@@ -1,5 +1,12 @@
 import { LocationObjectCoords } from "expo-location";
 import { locationInfo } from "../components/LocationInfoPopup";
+import {
+  deg2rad,
+  getDistanceFromLatLonInKm,
+  calculateTheta,
+} from "./placement";
+
+export { getDistanceFromLatLonInKm } from "./placement";
 
 const DISTANCE_LENIENCY = 0.1;
 
@@ -202,75 +209,6 @@ async function generateLocationOverpass(
   } catch (e) {
     console.log(e);
     return { distance: 0, newLatitude: 0, newLongitude: 0, osmID: "0" };
-  }
-}
-
-// See https://stackoverflow.com/a/27943/10975709
-export function getDistanceFromLatLonInKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-) {
-  const R = 6371; // Radius of the earth in km
-  const dLat = deg2rad(lat2 - lat1); // deg2rad below
-  const dLon = deg2rad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(deg2rad(lat1)) *
-      Math.cos(deg2rad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c; // Distance in km
-  console.log(
-    `distance between ${lat1},${lon1} and ${lat2},${lon2} is ${d} km`,
-  );
-  return d;
-}
-
-function deg2rad(deg: number) {
-  return deg * (Math.PI / 180);
-}
-
-/**Calculates theta and handles max radians being smaller that min radians
- * Also has to fix the crimes committed by the circular slider component.
- */
-function calculateTheta(minRadian: number, maxRadian: number) {
-  console.log(
-    "calculating theta from minRadian",
-    minRadian,
-    "and maxRadian",
-    maxRadian,
-  );
-  /** 
-  Transform the radians start at the correct angle (0 rads) instead of 90 degrees (PI/2 rads)
-  and make the circle go in the right direction (counter clockwise instead of clockwise).
-  Also known as "fixing the crimes committed by the circular slider component"
-  */
-  const fixedMax = Math.abs(minRadian - Math.PI * 2) + Math.PI / 2;
-  const fixedMin = Math.abs(maxRadian - Math.PI * 2) + Math.PI / 2;
-  console.log("fixedMin", fixedMin);
-  console.log("fixedMax", fixedMax);
-
-  if (fixedMin < fixedMax) {
-    const theta = Math.random() * (fixedMax - fixedMin) + fixedMin;
-    console.log("generated theta", theta);
-    return theta;
-  } else {
-    console.log("minRadian is higher than maxRadian.");
-    const maxCircleRads = 2 * Math.PI;
-    const highRandom = Math.random() * (maxCircleRads - fixedMin) + fixedMin;
-    const lowRandom = Math.random() * fixedMax;
-    const isLow = Math.random() < 0.5;
-    console.log(
-      "generated two thetas.",
-      lowRandom,
-      highRandom,
-      "\nReturning",
-      isLow ? lowRandom : highRandom,
-    );
-    return isLow ? lowRandom : highRandom;
   }
 }
 
