@@ -5,12 +5,30 @@ import {
   getDistanceFromLatLonInKm,
   calculateTheta,
   computeBbox,
+  placeTrip,
+  selectCandidate,
 } from "./placement";
 import type { Candidate, LatLon } from "./placement";
 
 export { getDistanceFromLatLonInKm } from "./placement";
 
 const DISTANCE_LENIENCY = 0.1;
+
+/** Effective [minDist, maxDist] for a trip, preserving distance_tier scaling and
+ *  the thin-annulus-at-floor clamp for low tiers. */
+function annulusBounds(
+  maximum_distance: number,
+  minimum_distance: number,
+  distance_tier: number,
+): { minDist: number; maxDist: number } {
+  let maxDist = (maximum_distance / 10) * distance_tier;
+  let minDist = minimum_distance;
+  if (maxDist < minimum_distance)
+    maxDist = minimum_distance * (1 + DISTANCE_LENIENCY);
+  if (minDist > maximum_distance)
+    minDist = maximum_distance * (1 - DISTANCE_LENIENCY);
+  return { minDist, maxDist };
+}
 
 /**
  * Overpass API endpoints, tried in order. If one is down, overloaded, or
@@ -274,9 +292,16 @@ async function generateLocationOverpass(
     // Pick the first returned node that isn't a banned location. osmIDs are
     // formatted as the capitalized first letter of the type + the id, e.g.
     // "N123" for node 123 (matching how banned locations are stored).
-    const coords = res.find(
-      (node) => !bannedOsmIDs.has(node.type[0].toUpperCase() + node.id),
-    );
+    const eligible = res.filter((node) => {
+      if (node.lat == null || node.lon == null) return false;
+      const osmID = node.type[0].toUpperCase() + node.id;
+      if (bannedOsmIDs.has(osmID)) return false;
+      const fromOrigin =
+        getDistanceFromLatLonInKm(latitude, longitude, node.lat, node.lon) *
+        1000;
+      return fromOrigin >= min && fromOrigin <= max;
+    });
+    const coords = eligible[0];
     if (coords == null)
       return { distance: 0, newLatitude: 0, newLongitude: 0, osmID: "0" };
 
@@ -328,14 +353,11 @@ async function getLocationCoordinates(
   osmID: string;
 }> {
   console.log(`${maximum_distance} / 10 * ${distance_tier}`);
-  let maxDist = (maximum_distance / 10) * distance_tier;
-  let minDist = minimum_distance;
-  if (correction > 0) maxDist = maxDist - correction;
-  else if (correction < 0) minDist = minDist - correction;
-  if (maxDist < minimum_distance)
-    maxDist = minimum_distance * (1 + DISTANCE_LENIENCY);
-  if (minDist > maximum_distance)
-    minDist = maximum_distance * (1 - DISTANCE_LENIENCY);
+  const { minDist, maxDist } = annulusBounds(
+    maximum_distance,
+    minimum_distance,
+    distance_tier,
+  );
   const zoom = loop_count > 1 || useNearZoom ? 18 : 17;
 
   const theta = calculateTheta(minRadian, maxRadian);
@@ -377,42 +399,6 @@ async function getLocationCoordinates(
       fail_count + 1,
     );
   }
-  const calculatedResult = Math.round(
-    res.distance * 1000 * 1 + DISTANCE_LENIENCY,
-  );
-  if (
-    (calculatedResult < minimum_distance ||
-      calculatedResult > maximum_distance) &&
-    loop_count > 5
-  ) {
-    console.log(
-      "error generating, expected values between",
-      minimum_distance,
-      maximum_distance,
-      "got:",
-      res.distance * 1000,
-    );
-    let cor = correction;
-    if (calculatedResult <= minimum_distance) {
-      cor += minimum_distance - calculatedResult;
-    } else if (calculatedResult >= maximum_distance) {
-      cor += maximum_distance - calculatedResult;
-    }
-    console.log("correction", cor);
-    res = await getLocationCoordinates(
-      latitude,
-      longitude,
-      maximum_distance,
-      distance_tier,
-      useNearZoom,
-      minRadian,
-      maxRadian,
-      bannedOsmIDs,
-      minimum_distance,
-      cor,
-      loop_count + 1,
-    );
-  }
   return res;
 }
 
@@ -430,7 +416,41 @@ export default async function getLocations(
   maxRadian: number,
   minRadian: number,
   bannedOsmIDs: Set<string>,
-) {
+  candidates?: Candidate[] | null,
+): Promise<{
+  lat: number;
+  lon: number;
+  osmID: string;
+  duplicate: boolean;
+}> {
+  const origin = { lat: initialCords.latitude, lon: initialCords.longitude };
+  const { minDist, maxDist } = annulusBounds(
+    maximum_distance,
+    minimum_distance,
+    trip.distance_tier,
+  );
+
+  // Fast path: place locally against the cached candidate set.
+  if (candidates && candidates.length > 0) {
+    const placed = placeTrip(
+      origin,
+      candidates,
+      minDist,
+      maxDist,
+      minRadian,
+      maxRadian,
+      bannedOsmIDs,
+    );
+    if (!placed) return { lat: 0, lon: 0, osmID: "0", duplicate: false };
+    return {
+      lat: placed.lat,
+      lon: placed.lon,
+      osmID: placed.osmID,
+      duplicate: false,
+    };
+  }
+
+  // Fallback: original per-location Overpass generation (now floor-enforced).
   const coordinates = await getLocationCoordinates(
     initialCords.latitude,
     initialCords.longitude,
