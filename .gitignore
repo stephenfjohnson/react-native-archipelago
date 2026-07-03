@@ -8,6 +8,10 @@ node_modules/
 dist/
 web-build/
 
+# Native projects (regenerate with `npx expo prebuild`)
+/android/
+/ios/
+
 # Native
 *.orig.*
 *.jks
