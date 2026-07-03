@@ -78,3 +78,76 @@ export function calculateTheta(
 
 /** meters projected to degrees; exported for the projection + tests. */
 export const METERS_PER_DEGREE_LAT = METERS_PER_DEGREE;
+
+/**
+ * Annulus radius in meters within [minDist, maxDist], non-uniform (sqrt) so the
+ * distribution favors the outer edge — matching the original generator.
+ */
+export function annulusRadius(
+  minDist: number,
+  maxDist: number,
+  rand: () => number = Math.random,
+): number {
+  return (maxDist - minDist) * Math.sqrt(rand()) + minDist;
+}
+
+/** Project a point `r` meters from origin at bearing `theta` (radians). */
+export function projectPoint(origin: LatLon, r: number, theta: number): LatLon {
+  const dy = r * Math.sin(theta);
+  const dx = r * Math.cos(theta);
+  return {
+    lat: origin.lat + dy / METERS_PER_DEGREE,
+    lon: origin.lon + dx / (METERS_PER_DEGREE * Math.cos(deg2rad(origin.lat))),
+  };
+}
+
+/**
+ * Choose the candidate nearest to `target` whose distance FROM ORIGIN is within
+ * [minDist, maxDist] meters — this is where the minimum-distance floor is
+ * enforced structurally (sub-floor nodes are never eligible). Skips any osmID in
+ * `exclude` (banned, or already-used when uniqueness is required). Returns null
+ * if none qualify.
+ */
+export function selectCandidate(
+  origin: LatLon,
+  candidates: Candidate[],
+  target: LatLon,
+  minDist: number,
+  maxDist: number,
+  exclude: Set<string>,
+): Candidate | null {
+  let best: Candidate | null = null;
+  let bestTargetDist = Infinity;
+  for (const c of candidates) {
+    if (exclude.has(c.osmID)) continue;
+    const fromOrigin = metersBetween(origin, { lat: c.lat, lon: c.lon });
+    if (fromOrigin < minDist || fromOrigin > maxDist) continue;
+    const toTarget = metersBetween(target, { lat: c.lat, lon: c.lon });
+    if (toTarget < bestTargetDist) {
+      bestTargetDist = toTarget;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/**
+ * Full local placement for one trip: sample a bearing + annulus radius, project
+ * a target point, and snap to the nearest eligible candidate. Returns null if no
+ * candidate satisfies the annulus.
+ */
+export function placeTrip(
+  origin: LatLon,
+  candidates: Candidate[],
+  minDist: number,
+  maxDist: number,
+  minRadian: number,
+  maxRadian: number,
+  exclude: Set<string>,
+  rand: () => number = Math.random,
+): Candidate | null {
+  const theta = calculateTheta(minRadian, maxRadian, rand);
+  const r = annulusRadius(minDist, maxDist, rand);
+  const target = projectPoint(origin, r, theta);
+  return selectCandidate(origin, candidates, target, minDist, maxDist, exclude);
+}
