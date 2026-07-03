@@ -52,7 +52,10 @@ function TabButton({
         />
         <Text
           numberOfLines={1}
-          style={[styles.label, focused ? styles.labelActive : styles.labelInactive]}
+          style={[
+            styles.label,
+            focused ? styles.labelActive : styles.labelInactive,
+          ]}
         >
           {label}
         </Text>
@@ -69,7 +72,11 @@ export default function GlassTabBar({
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <GlassSurface radius={30} intensity={Theme.blurIntensity + 25} style={styles.pill}>
+      <GlassSurface
+        radius={30}
+        intensity={Theme.blurIntensity + 25}
+        style={styles.pill}
+      >
         <View style={styles.row}>
           {state.routes.map((route, index) => {
             const focused = state.index === index;

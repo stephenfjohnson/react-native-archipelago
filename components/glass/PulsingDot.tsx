@@ -41,8 +41,14 @@ export default function PulsingDot({
     return () => loop.stop();
   }, [pulse, duration, delay]);
 
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.6] });
-  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0.25] });
+  const scale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.85, 1.6],
+  });
+  const opacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.9, 0.25],
+  });
 
   return (
     <Animated.View

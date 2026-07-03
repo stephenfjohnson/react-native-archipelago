@@ -22,7 +22,10 @@ function Ring({ size, delay }: Readonly<{ size: number; delay: number }>) {
   }, [t, delay]);
 
   const scale = t.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] });
-  const opacity = t.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.55, 0] });
+  const opacity = t.interpolate({
+    inputRange: [0, 0.15, 1],
+    outputRange: [0, 0.55, 0],
+  });
 
   return (
     <Animated.View
@@ -41,25 +44,43 @@ function Ring({ size, delay }: Readonly<{ size: number; delay: number }>) {
   );
 }
 
-export default function BrandMark({
-  size = 76,
-}: Readonly<{ size?: number }>) {
+export default function BrandMark({ size = 76 }: Readonly<{ size?: number }>) {
   const core = size * 0.24;
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1300, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 1300, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1300,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1300,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
       ]),
     );
     loop.start();
     return () => loop.stop();
   }, [pulse]);
-  const coreScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.12] });
+  const coreScale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.92, 1.12],
+  });
 
   return (
-    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <Ring size={size} delay={0} />
       <Ring size={size} delay={1300} />
       {/* soft halo */}

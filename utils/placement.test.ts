@@ -2,8 +2,10 @@ import {
   getDistanceFromLatLonInKm,
   metersBetween,
   computeBbox,
+  selectCandidate,
+  placeTrip,
+  projectPoint,
 } from "./placement";
-import { selectCandidate, placeTrip, projectPoint } from "./placement";
 import type { Candidate, LatLon } from "./placement";
 
 describe("getDistanceFromLatLonInKm", () => {

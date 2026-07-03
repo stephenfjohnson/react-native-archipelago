@@ -1,6 +1,12 @@
 // components/glass/GlassMarker.tsx
 import React from "react";
-import Svg, { Circle, Defs, Polygon, RadialGradient, Stop } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  Polygon,
+  RadialGradient,
+  Stop,
+} from "react-native-svg";
 
 import Colors from "../../styles/Colors";
 import Theme from "../../styles/Theme";
@@ -63,7 +69,13 @@ export default function GlassMarker({
         opacity={dim ? 0.7 : 1}
       />
       {/* bright center dot */}
-      <Circle cx={c} cy={c} r={size * 0.07} fill={Theme.textPrimary} opacity={dim ? 0.5 : 1} />
+      <Circle
+        cx={c}
+        cy={c}
+        r={size * 0.07}
+        fill={Theme.textPrimary}
+        opacity={dim ? 0.5 : 1}
+      />
     </Svg>
   );
 }

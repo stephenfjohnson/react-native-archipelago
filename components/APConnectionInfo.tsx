@@ -134,7 +134,9 @@ export default function APConnectionInfo({
         buttonProps={{ disabled: loading }}
         removeText={loading}
       >
-        {loading && <ActivityIndicator size="small" color={Theme.textPrimary} />}
+        {loading && (
+          <ActivityIndicator size="small" color={Theme.textPrimary} />
+        )}
       </Button>
     </View>
   );

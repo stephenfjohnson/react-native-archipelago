@@ -280,7 +280,9 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}>
+            <Text
+              style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}
+            >
               Use home location
             </Text>
             <View
@@ -303,7 +305,9 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}>
+            <Text
+              style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}
+            >
               Minimum distance
             </Text>
             <View
@@ -352,7 +356,9 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}>
+            <Text
+              style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}
+            >
               Maximum distance
             </Text>
             <View

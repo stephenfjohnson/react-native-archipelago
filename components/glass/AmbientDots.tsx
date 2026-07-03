@@ -20,17 +20,18 @@ export default function AmbientDots({
   opacity = 0.5,
 }: Readonly<{ count?: number; opacity?: number }>) {
   return (
-    <View
-      pointerEvents="none"
-      style={[StyleSheet.absoluteFill, { opacity }]}
-    >
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity }]}>
       {SPOTS.slice(0, count).map((s, i) => (
         <PulsingDot
           key={i}
           size={s.size}
           delay={s.delay}
           color={i % 2 === 0 ? Theme.accent : Theme.accentBright}
-          style={{ position: "absolute", top: s.top as any, left: s.left as any }}
+          style={{
+            position: "absolute",
+            top: s.top as any,
+            left: s.left as any,
+          }}
         />
       ))}
     </View>

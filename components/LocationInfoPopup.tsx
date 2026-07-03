@@ -324,7 +324,11 @@ export default function LocationInfoPopup({
           </View>
           <Pressable>
             <Text
-              style={{ fontSize: 12, color: Theme.textSecondary, textAlign: "right" }}
+              style={{
+                fontSize: 12,
+                color: Theme.textSecondary,
+                textAlign: "right",
+              }}
               selectable
             >
               osm ID:{locationInfo.coords.osmID}
@@ -400,7 +404,9 @@ export default function LocationInfoPopup({
                         }}
                       />
                     ) : (
-                      <Text style={{ marginBottom: 10, color: Theme.textSecondary }}>
+                      <Text
+                        style={{ marginBottom: 10, color: Theme.textSecondary }}
+                      >
                         {client.socket.connected
                           ? "You do not have enough hint points to hint a key"
                           : "You are not currently connected"}
