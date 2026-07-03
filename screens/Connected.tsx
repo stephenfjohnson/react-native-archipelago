@@ -2,7 +2,7 @@ import {
   createBottomTabNavigator,
   BottomTabNavigationProp,
 } from "@react-navigation/bottom-tabs";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import GlassTabBar from "../components/glass/GlassTabBar";
 import { glassTabScreenOptions } from "../components/glass/GlassTabBarBackground";
 import { PrintJSONPacket } from "archipelago.js";
 import * as Location from "expo-location";
@@ -341,15 +341,9 @@ export default function Connected({
     <Tab.Navigator
       initialRouteName="Chat"
       screenOptions={{ ...glassTabScreenOptions, tabBarHideOnKeyboard: true }}
+      tabBar={(props) => <GlassTabBar {...props} />}
     >
-      <Tab.Screen
-        name="Chat"
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-ellipses" color={color} size={size} />
-          ),
-        }}
-      >
+      <Tab.Screen name="Chat">
         {(props) => (
           <ScrollView
             refreshControl={
@@ -378,14 +372,7 @@ export default function Connected({
         )}
       </Tab.Screen>
       {allowedLocation && (
-        <Tab.Screen
-          name="Map"
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="map" color={color} size={size} />
-            ),
-          }}
-        >
+        <Tab.Screen name="Map">
           {(props) => (
             <>
               {lostConnection && (
@@ -426,15 +413,7 @@ export default function Connected({
           )}
         </Tab.Screen>
       )}
-      <Tab.Screen
-        name="Hints"
-        component={HintsScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bulb" color={color} size={size} />
-          ),
-        }}
-      />
+      <Tab.Screen name="Hints" component={HintsScreen} />
     </Tab.Navigator>
   );
 }

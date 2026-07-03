@@ -1,7 +1,7 @@
 import { MaterialTopTabBarProps } from "@react-navigation/material-top-tabs";
 import { ConnectionOptions, itemsHandlingFlags } from "archipelago.js";
 import React, { useContext, useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "react-native-get-random-values";
 
@@ -12,8 +12,9 @@ import { APInfo, ClientContext } from "../components/ClientContext";
 import { ErrorContext } from "../components/ErrorContext";
 import Popup from "../components/Popup";
 import AmbientDots from "../components/glass/AmbientDots";
+import BrandMark from "../components/glass/BrandMark";
 import commonStyles from "../styles/CommonStyles";
-import mainStyles from "../styles/MainStyles";
+import Theme from "../styles/Theme";
 import {
   STORAGE_TYPES,
   getAllNames,
@@ -112,8 +113,20 @@ export default function Connect({
   };
 
   return (
-    <SafeAreaView style={mainStyles.connectionContainer}>
+    <SafeAreaView style={styles.screen}>
       <AmbientDots />
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <BrandMark size={82} />
+          <Text style={styles.title}>Archipela-Go</Text>
+          <Text style={styles.subtitle}>Connect to a multiworld</Text>
+        </View>
+        <APConnectionInfo
+          onPress={connectToAP}
+          buttonText="Connect to Archipelago"
+          loading={loading}
+        />
+      </View>
       <Popup visible={modalVisible} closePopup={closePopup}>
         <Text style={commonStyles.modalText}>
           What do you want to save this connection as?
@@ -141,11 +154,34 @@ export default function Connect({
           />
         </View>
       </Popup>
-      <APConnectionInfo
-        onPress={connectToAP}
-        buttonText="Connect to Archipelago"
-        loading={loading}
-      />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: Theme.bg,
+  },
+  content: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  title: {
+    marginTop: 16,
+    fontSize: 30,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    color: Theme.textPrimary,
+  },
+  subtitle: {
+    marginTop: 6,
+    fontSize: 15,
+    color: Theme.textSecondary,
+  },
+});
