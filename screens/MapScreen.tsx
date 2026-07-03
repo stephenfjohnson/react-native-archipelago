@@ -756,14 +756,9 @@ export default function MapScreen({
         STORAGE_TYPES.OBJECT,
       );
     }
-    geofenceLocations(
-      trips,
-      client,
-      receivedKeys,
-      receivedReductions,
-      MARKER_RADIUS,
-      locationEmitter.current,
-    );
+    // Re-arming geofencing is handled by the [receivedKeys, trips, respawning]
+    // effect once setRespawning(false) above takes effect (with fresh values).
+    // Calling geofenceLocations() here would use stale mount-time closures.
   };
 
   const triggerRespawn = async (source: string, cause?: string) => {
