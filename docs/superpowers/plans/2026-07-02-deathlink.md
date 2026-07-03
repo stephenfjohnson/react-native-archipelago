@@ -219,15 +219,12 @@ export function metersBetween(
 
 - [ ] **Step 2: Read the mode and keep a fresh ref in `MapScreen`**
 
-In `screens/MapScreen.tsx`, add the import near the other util imports:
+In `screens/MapScreen.tsx`, add the import near the other util imports (only what
+Task 2 uses — Task 3 and Task 4 extend this import as they add `pickRandomTrap` and
+`metersBetween`):
 
 ```ts
-import {
-  DEATH_LINK_MODES,
-  DeathLinkMode,
-  pickRandomTrap,
-  metersBetween,
-} from "../utils/deathLink";
+import { DEATH_LINK_MODES, DeathLinkMode } from "../utils/deathLink";
 ```
 
 Inside `MapScreen`, next to the other `getSetting` calls (after `USE_HOME_LOCATION`):
@@ -308,6 +305,15 @@ git commit -m "feat(deathlink): helpers + set/clear DeathLink tag on connect and
 **Interfaces:**
 - Consumes: `client.deathLink.on("deathReceived", handler)` / `.off(...)`; handler signature `(source: string, time: number, cause?: string) => void`; `pickRandomTrap()`; `goalAchieved` state.
 - Produces: `handleDeathReceived(source, time, cause)` used by the real event and the dev trigger; a placeholder `triggerRespawn(source, cause)` that Task 4 fills in.
+
+- [ ] **Step 0: Extend the deathLink import**
+
+In `screens/MapScreen.tsx`, update the `../utils/deathLink` import (added in Task 2) to
+also pull in `pickRandomTrap`:
+
+```ts
+import { DEATH_LINK_MODES, DeathLinkMode, pickRandomTrap } from "../utils/deathLink";
+```
 
 - [ ] **Step 1: Add a fresh ref for `goalAchieved`**
 
@@ -412,6 +418,20 @@ git commit -m "feat(deathlink): receive deaths, Trap-mode announcement, dev trig
 **Interfaces:**
 - Consumes: `metersBetween()`; `Location.watchPositionAsync`; `save`/`load` with keys `sessionName + "_origin"` and `sessionName + "_respawning"`; `removeGeofencing()`, `geofenceLocations(...)`, `handleGeofenceEnter`.
 - Produces: real `triggerRespawn`; `respawning` state passed to `LocationInfoPopup` as `respawning: boolean`.
+
+- [ ] **Step 0: Extend the deathLink import**
+
+In `screens/MapScreen.tsx`, update the `../utils/deathLink` import to also pull in
+`metersBetween`:
+
+```ts
+import {
+  DEATH_LINK_MODES,
+  DeathLinkMode,
+  pickRandomTrap,
+  metersBetween,
+} from "../utils/deathLink";
+```
 
 - [ ] **Step 1: Add respawn state + refs**
 
