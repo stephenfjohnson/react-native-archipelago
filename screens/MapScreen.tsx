@@ -25,6 +25,7 @@ import {
   View,
 } from "react-native";
 import MapView, { Camera, LatLng, Marker } from "react-native-maps";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import APMarkers from "./APMarkers";
 import AsyncAlert from "../components/AsyncAlert";
@@ -822,10 +823,11 @@ export default function MapScreen({
     else stopKeepAwake();
   }, [generating]);
 
+  const insets = useSafeAreaInsets();
   return (
     <View style={mapStyles.container}>
       <Pressable
-        style={mapStyles.refreshButton}
+        style={[mapStyles.refreshButton, { top: insets.top + 10 }]}
         onPress={() => {
           handleRefresh();
         }}
@@ -836,7 +838,7 @@ export default function MapScreen({
         </View>
       </Pressable>
       <Pressable
-        style={mapStyles.apButton}
+        style={[mapStyles.apButton, { top: insets.top + 10 }]}
         onPress={() => {
           setShowAPPopup(true);
         }}
