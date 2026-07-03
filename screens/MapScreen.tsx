@@ -35,6 +35,7 @@ import LocationInfoPopup, {
 } from "../components/LocationInfoPopup";
 import { findSetting, SettingsContext } from "../components/SettingsContext";
 import mapStyles from "../styles/MapStyles";
+import { DEATH_LINK_MODES, DeathLinkMode } from "../utils/deathLink";
 import getLocations from "../utils/getLocations";
 import handleItems, { GOAL_MAP, MAP_ID_TO_ITEM } from "../utils/handleItems";
 import { STORAGE_TYPES, load, save } from "../utils/storageHandler";
@@ -294,6 +295,10 @@ export default function MapScreen({
   const MIN_RADIAN = getSetting("MIN_RADIAN", "number");
   const HOME_LOCATION = getSetting("HOME_LOCATION", "object") as LatLng;
   const USE_HOME_LOCATION = getSetting("USE_HOME_LOCATION", "boolean");
+  const DEATH_LINK_MODE = getSetting(
+    "DEATH_LINK_MODE",
+    "string",
+  ) as DeathLinkMode;
 
   const [showPopup, setShowPopup] = useState(false);
   const [showAPPopup, setShowAPPopup] = useState(false);
@@ -324,6 +329,8 @@ export default function MapScreen({
   const slotData = useRef<JSONRecord | null>(null);
   const appState = useRef(AppState.currentState);
   const locationEmitter = useRef(new LocationsEmitter());
+  const deathLinkModeRef = useRef<DeathLinkMode>(DEATH_LINK_MODE);
+  deathLinkModeRef.current = DEATH_LINK_MODE;
 
   const handleShowPopup = (trip: trip) => {
     setSelectedLocation(trip);
@@ -686,6 +693,15 @@ export default function MapScreen({
     setRefresh((prevState) => !prevState);
   };
 
+  const applyDeathLinkTag = () => {
+    if (!client.authenticated) return;
+    if (deathLinkModeRef.current === DEATH_LINK_MODES.OFF) {
+      client.deathLink.disableDeathLink();
+    } else {
+      client.deathLink.enableDeathLink();
+    }
+  };
+
   const handleReconnect = async () => {
     handleReroll();
 
@@ -744,6 +760,8 @@ export default function MapScreen({
     client.socket.on("receivedItems", receivedItemsListener);
     client.items.on("hintReceived", hintsReceivedListener);
     locationEmitter.current.on("locationEntered", handleGeofenceEnter);
+    client.socket.on("connected", applyDeathLinkTag);
+    applyDeathLinkTag();
 
     console.log(
       "client.items.received.length",
@@ -775,6 +793,7 @@ export default function MapScreen({
       client.socket.off("connected", handleReconnect);
       client.socket.off("roomUpdate", roomUpdateListener);
       client.socket.off("receivedItems", receivedItemsListener);
+      client.socket.off("connected", applyDeathLinkTag);
       if (rerollTimer.current != null) clearTimeout(rerollTimer.current);
     };
   }, []);
@@ -817,6 +836,10 @@ export default function MapScreen({
     console.log("macguffinString changed to", macguffinString);
     if (!goalAchieved) handleGoal(client, trips, macguffinString);
   }, [macguffinString]);
+
+  useEffect(() => {
+    applyDeathLinkTag();
+  }, [DEATH_LINK_MODE]);
 
   useEffect(() => {
     if (generating) keepAwake();
