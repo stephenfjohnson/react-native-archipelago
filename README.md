@@ -169,6 +169,64 @@ By pressing the Ap button while connected, a popup containing your goal informat
 <sub>4. Both short and long macguffin hunts</sub> 
 <sub>5. Traps do nothing functionality, but the player is notified when they are received</sub> 
 
+## Building the app from source
+
+These steps produce a **standalone release APK** — the JavaScript is bundled
+into the APK, so the app runs with no Metro dev server and no streamed/dev code.
+(By contrast, `npx expo run:android` / a Debug build load JS from Metro over
+Wi-Fi and are only useful while tethered to a running dev server.)
+
+### Prerequisites
+
+The paths below match the machine this app is currently built on (macOS +
+Homebrew); adjust them for your setup.
+
+- **JDK 17** — Homebrew `openjdk@17` at `/opt/homebrew/opt/openjdk@17` (not on
+  `PATH`, so it's passed via `JAVA_HOME` below).
+- **Android SDK / command-line tools** at
+  `/opt/homebrew/share/android-commandlinetools` (provides `adb`, `gradle` deps,
+  NDK, cmake). `android/local.properties` already points `sdk.dir` here.
+- **Google Maps key** — copy `.env.example` → `.env` and fill in
+  `EXPO_PUBLIC_GOOGLE_API_KEY_ANDROID`. `expo prebuild` injects it into
+  `AndroidManifest.xml`.
+
+### Build the release APK
+
+```sh
+# 1. Install JS dependencies
+npm install
+
+# 2. Generate the native Android project and inject the .env values
+npx expo prebuild --platform android
+
+# 3. Build the standalone release APK (JS bundle embedded)
+env JAVA_HOME=/opt/homebrew/opt/openjdk@17 \
+    ANDROID_SDK_ROOT=/opt/homebrew/share/android-commandlinetools \
+    android/gradlew -p android assembleRelease
+```
+
+The finished APK is written to:
+
+```
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+It's a ~107 MB universal APK, signed with the debug keystore, with the JS bundle
+embedded — it launches straight into the app offline, no Metro required.
+
+### Load the new version onto a device
+
+Connect the device over USB with **USB debugging** enabled, then:
+
+```sh
+# adb lives in the SDK's platform-tools; add it to PATH or call it by full path
+/opt/homebrew/share/android-commandlinetools/platform-tools/adb install -r \
+    android/app/build/outputs/apk/release/app-release.apk
+```
+
+`-r` reinstalls over the existing install, keeping app data. You can also
+sideload the `.apk` file directly (e.g. transfer it to the device and open it).
+
 ## Troubleshooting
 
 ### Locations do not appear
