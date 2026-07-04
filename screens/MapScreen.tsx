@@ -131,6 +131,12 @@ function MemoizedMap({
   return (
     <MapView
       ref={mapRef}
+      // Force the legacy Google Maps renderer. The new "Phoenix" renderer
+      // (com.google.android.gms.policy_maps_core) crashes with
+      // "The specified child already has a parent" when a Callout's info-window
+      // view is moved between markers (e.g. tapping a second marker while one
+      // callout is open). Selected once at map-creation time.
+      googleRenderer="LEGACY"
       style={mapStyles.map}
       userLocationUpdateInterval={1000}
       showsUserLocation
