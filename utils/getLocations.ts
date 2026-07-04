@@ -416,6 +416,7 @@ export default async function getLocations(
   minRadian: number,
   bannedOsmIDs: Set<string>,
   candidates?: Candidate[] | null,
+  usedOsmIDs?: Set<string>,
 ): Promise<{
   lat: number;
   lon: number;
@@ -429,6 +430,17 @@ export default async function getLocations(
     trip.distance_tier,
   );
 
+  // Union banned + already-used road nodes so a candidate is never handed to
+  // two different trips. This wires up the uniqueness that selectCandidate /
+  // placeTrip were built for (see placement.ts) but that no caller supplied —
+  // previously the only defense against co-located checks was the best-effort
+  // duplicate-retry loop, which fails on small candidate sets and silently
+  // leaves two checks on one location.
+  const exclude =
+    usedOsmIDs && usedOsmIDs.size > 0
+      ? new Set<string>([...bannedOsmIDs, ...usedOsmIDs])
+      : bannedOsmIDs;
+
   // Fast path: place locally against the cached candidate set.
   if (candidates && candidates.length > 0) {
     const placed = placeTrip(
@@ -438,7 +450,7 @@ export default async function getLocations(
       maxDist,
       minRadian,
       maxRadian,
-      bannedOsmIDs,
+      exclude,
     );
     if (!placed) return { lat: 0, lon: 0, osmID: "0", duplicate: false };
     return {
@@ -458,7 +470,7 @@ export default async function getLocations(
     useNearZoom,
     minRadian,
     maxRadian,
-    bannedOsmIDs,
+    exclude,
     minimum_distance,
   );
   return {

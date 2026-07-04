@@ -88,6 +88,45 @@ describe("selectCandidate — floor enforcement", () => {
   });
 });
 
+describe("placeTrip — uniqueness across sequential placements", () => {
+  // Locks the contract suspect #2's fix relies on: when each placed candidate's
+  // osmID is accumulated into `exclude`, no later trip can be handed the same
+  // road node — so two checks never silently land on one location.
+  it("never reuses an osmID once it is added to the exclude set", () => {
+    const cands = [
+      candidateAt("N1", 150, 0),
+      candidateAt("N2", 160, 0),
+      candidateAt("N3", 170, 0),
+    ];
+    const used = new Set<string>();
+    const picks: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const placed = placeTrip(
+        ORIGIN,
+        cands,
+        100,
+        500,
+        0,
+        2 * Math.PI,
+        used,
+        () => 0.5, // deterministic bearing/radius so target is stable
+      );
+      expect(placed).not.toBeNull();
+      expect(used.has(placed!.osmID)).toBe(false);
+      used.add(placed!.osmID);
+      picks.push(placed!.osmID);
+    }
+    expect(new Set(picks).size).toBe(3);
+  });
+
+  it("returns null once every candidate is excluded", () => {
+    const cands = [candidateAt("N1", 150, 0), candidateAt("N2", 160, 0)];
+    const used = new Set<string>(["N1", "N2"]);
+    const placed = placeTrip(ORIGIN, cands, 100, 500, 0, 2 * Math.PI, used);
+    expect(placed).toBeNull();
+  });
+});
+
 describe("placeTrip — floor property test", () => {
   it("every non-null placement is within [minDist,maxDist] of origin over many runs", () => {
     // A field of candidates from 0..600m in all directions.

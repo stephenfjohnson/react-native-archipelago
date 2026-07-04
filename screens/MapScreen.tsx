@@ -419,6 +419,13 @@ export default function MapScreen({
       const oldTrip: trip = trips.find((trip: trip) => trip.id === id);
       const filteredTrips = removeCheckedLocations(trips, [id]);
       const trip = slotData.current?.trips[name];
+      // Exclude the road nodes the other (retained) trips already occupy so a
+      // reroll can't drop this location on top of an existing one.
+      const rerollUsedOsmIDs = new Set<string>(
+        filteredTrips
+          .map((t) => t.coords.osmID)
+          .filter((osmID) => osmID && osmID !== "0"),
+      );
       const coords = await getLocations(
         loc,
         parseInt(JSON.stringify(slotData.current?.maximum_distance), 10),
@@ -430,6 +437,7 @@ export default function MapScreen({
         MIN_RADIAN,
         bannedOsmIDs,
         candidates,
+        rerollUsedOsmIDs,
       );
       const isDuplicate = trips.some(
         (value) =>
@@ -609,6 +617,14 @@ export default function MapScreen({
         STORAGE_TYPES.OBJECT,
       );
       const tempTrips: trip[] = partialGeneration ?? [];
+      // Road nodes already committed to a trip this session. Threaded into
+      // getLocations so no two checks are placed on the same candidate. Seeded
+      // from any resumed partial trips so a resume can't re-collide.
+      const usedOsmIDs = new Set<string>(
+        tempTrips
+          .map((t) => t.coords.osmID)
+          .filter((osmID) => osmID && osmID !== "0"),
+      );
       const tracker = { tripGroup: 0, theta: Math.random() * 2 * Math.PI };
       for (const [name, trip] of Object.entries(data?.trips).sort(
         (a, b) => a[1].key_needed - b[1].key_needed,
@@ -618,7 +634,18 @@ export default function MapScreen({
         //Makes the slot data into an array that is sorted by key_needed...
         const id =
           client.package.findPackage("Archipela-Go!")?.locationTable[name];
-        if (!id) continue;
+        if (id == null) {
+          // Only skip when the name has NO datapackage id at all (absent from
+          // locationTable). Previously this was `if (!id)`, which also dropped a
+          // location whose id is 0 — a valid AP id — silently removing one
+          // reachable check and making the game uncompletable. `id == null`
+          // keeps id 0; genuinely-unresolvable names are still surfaced here so
+          // a slot-data/datapackage name mismatch can't hide.
+          console.log(
+            `[gen-drop] "${name}" skipped: no locationTable id (key_needed=${trip.key_needed})`,
+          );
+          continue;
+        }
         if (client.room.checkedLocations.includes(id)) continue;
         if (
           partialGeneration !== null &&
@@ -647,6 +674,7 @@ export default function MapScreen({
             MIN_RADIAN,
             bannedOsmIDs,
             candidates,
+            usedOsmIDs,
           );
           generatingCoords = tempTrips.some(
             (value) =>
@@ -659,7 +687,16 @@ export default function MapScreen({
           loopCount++;
         }
 
+        if (coords.osmID === "0") {
+          // [gen-place-fail] getLocations could not place this trip within its
+          // annulus (no candidate in a thin near-start ring, or Overpass gave
+          // up). It is pushed anyway at (0,0)/osmID "0" — an unreachable marker.
+          console.log(
+            `[gen-place-fail] "${name}" (id ${id}, key_needed ${trip.key_needed}) stuck at osmID "0"/(0,0) after ${loopCount} attempt(s)`,
+          );
+        }
         tempTrips.push({ coords, trip, name, id });
+        if (coords.osmID && coords.osmID !== "0") usedOsmIDs.add(coords.osmID);
         await save(tempTrips, sessionName + "_tempTrips", STORAGE_TYPES.OBJECT);
         if (isDisconnecting.current) break;
       }
@@ -683,6 +720,12 @@ export default function MapScreen({
     // publish the trips below. A forEach(async ...) here would be
     // fire-and-forget, so setTrips/geofenceLocations would run with the failed
     // (0,0 / osmID "0") coordinates still in place.
+    // Track nodes already in use so recovery placements don't collide either.
+    const recoveryUsedOsmIDs = new Set<string>(
+      filteredTrips
+        .map((t) => t.coords.osmID)
+        .filter((osmID) => osmID && osmID !== "0"),
+    );
     for (const trip of filteredTrips) {
       if (trip.coords.osmID === "0") {
         const newCoords = await getLocations(
@@ -696,7 +739,10 @@ export default function MapScreen({
           MIN_RADIAN,
           bannedOsmIDs,
           candidates,
+          recoveryUsedOsmIDs,
         );
+        if (newCoords.osmID && newCoords.osmID !== "0")
+          recoveryUsedOsmIDs.add(newCoords.osmID);
         newCoords.duplicate = filteredTrips.some(
           (value) =>
             value.coords.lat === newCoords.lat &&
@@ -705,6 +751,18 @@ export default function MapScreen({
         trip.coords = newCoords;
       }
     }
+    // [gen-summary] Quantifies "one less check location": how many trips slot
+    // data defined vs how many we are actually publishing, and which (if any)
+    // are stuck unreachable at osmID "0". Compare data.trips count against
+    // published + already-checked to spot a silently-dropped location.
+    const stuckTrips = filteredTrips.filter((t) => t.coords.osmID === "0");
+    console.log(
+      `[gen-summary] data.trips=${Object.keys(data.trips ?? {}).length}, ` +
+        `published=${filteredTrips.length}, ` +
+        `alreadyChecked=${client.room.checkedLocations.length}, ` +
+        `stuckAtZero=${stuckTrips.length}`,
+      stuckTrips.map((t) => t.name),
+    );
     const keyAmount = client.items.received.map(
       (item) => item.id === MAP_ID_TO_ITEM.KEY,
     ).length;
