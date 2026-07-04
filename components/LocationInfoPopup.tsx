@@ -55,7 +55,12 @@ export default function LocationInfoPopup({
   location: trip | null;
   client: Client;
   receivedKeys: number;
-  rerollSelectedLocation: (id: number, name: string) => Promise<void>;
+  rerollSelectedLocation: (
+    id: number,
+    name: string,
+    loops?: number,
+    free?: boolean,
+  ) => Promise<void>;
   rerollAllowed: React.MutableRefObject<boolean>;
   rerollTime: React.MutableRefObject<Date>;
   setLocationAsFound: (id: number) => void;
@@ -110,8 +115,14 @@ export default function LocationInfoPopup({
           {
             text: "Reroll",
             onPress: () => {
-              rerollSelectedLocation(locationInfo?.id, locationInfo.name);
-              rerollAllowed.current = true;
+              // Free reroll: this location is invalid (0,0 / osmID "0"), so it
+              // must not cost a cooldown — matches the alert text above.
+              rerollSelectedLocation(
+                locationInfo?.id,
+                locationInfo.name,
+                0,
+                true,
+              );
               handleClosePopup();
             },
           },

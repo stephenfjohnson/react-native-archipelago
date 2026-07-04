@@ -42,6 +42,7 @@ import {
   metersBetween,
 } from "../utils/deathLink";
 import getLocations, { fetchRoadCandidates } from "../utils/getLocations";
+import { metersBetween as candidateDistanceMeters } from "../utils/placement";
 import type { Candidate } from "../utils/placement";
 import handleItems, { GOAL_MAP, MAP_ID_TO_ITEM } from "../utils/handleItems";
 import { STORAGE_TYPES, load, save } from "../utils/storageHandler";
@@ -379,10 +380,46 @@ export default function MapScreen({
     setCheckedLocations((prev) => [...prev, id]);
   };
 
+  // Load cached road candidates, but treat the cache as STALE and refetch when
+  // none of its nodes fall within maxDistanceMeters of the current origin — the
+  // sign it was fetched around a different home. The cache is keyed by session
+  // only, so without this a home move (or a device change) silently reused the
+  // old location's candidates and every trip failed placement, stranding checks
+  // at (0,0)/Null Island until the cache was manually cleared.
+  const loadOrFetchCandidates = async (
+    origin: { lat: number; lon: number },
+    maxDistanceMeters: number,
+    bannedOsmIDs: Set<string>,
+  ): Promise<Candidate[] | null> => {
+    const cached: Candidate[] | null = await load(
+      sessionName + "_candidates",
+      STORAGE_TYPES.OBJECT,
+    );
+    const usable =
+      !!cached &&
+      cached.length > 0 &&
+      cached.some(
+        (c) =>
+          candidateDistanceMeters(origin, { lat: c.lat, lon: c.lon }) <=
+          maxDistanceMeters,
+      );
+    if (usable) return cached;
+    const fetched = await fetchRoadCandidates(
+      origin,
+      maxDistanceMeters,
+      bannedOsmIDs,
+    );
+    if (fetched && fetched.length > 0 && sessionName && sessionName !== "") {
+      await save(fetched, sessionName + "_candidates", STORAGE_TYPES.OBJECT);
+    }
+    return fetched;
+  };
+
   const rerollSelectedLocation = async (
     id: number,
     name: string,
     loops = 0,
+    free = false,
   ) => {
     if (slotData.current?.trips !== null && location !== null) {
       if (loops === 0) setGeneratingStatus("Rerolling location");
@@ -398,30 +435,14 @@ export default function MapScreen({
           .map((location) => location.osmID)
           .filter((osmID) => osmID.startsWith("N")),
       );
-      let candidates: Candidate[] | null = await load(
-        sessionName + "_candidates",
-        STORAGE_TYPES.OBJECT,
+      const candidates = await loadOrFetchCandidates(
+        { lat: loc.latitude, lon: loc.longitude },
+        parseInt(JSON.stringify(slotData.current?.maximum_distance), 10),
+        bannedOsmIDs,
       );
-      if (!candidates || candidates.length === 0) {
-        candidates = await fetchRoadCandidates(
-          { lat: loc.latitude, lon: loc.longitude },
-          parseInt(JSON.stringify(slotData.current?.maximum_distance), 10),
-          bannedOsmIDs,
-        );
-        if (
-          candidates &&
-          candidates.length > 0 &&
-          sessionName &&
-          sessionName !== ""
-        ) {
-          await save(
-            candidates,
-            sessionName + "_candidates",
-            STORAGE_TYPES.OBJECT,
-          );
-        }
-      }
-      rerollAllowedRef.current = false;
+      // A free reroll (recovering an invalid 0,0 placement) must not go on
+      // cooldown — leave rerollAllowedRef untouched so it stays allowed.
+      if (!free) rerollAllowedRef.current = false;
       const oldTrip: trip = trips.find((trip: trip) => trip.id === id);
       const filteredTrips = removeCheckedLocations(trips, [id]);
       const trip = slotData.current?.trips[name];
@@ -454,12 +475,16 @@ export default function MapScreen({
       if (oldTrip.coords !== coords) {
         filteredTrips.push({ coords, trip, name, id });
         setTrips(filteredTrips);
-        rerollTime.current = new Date();
         await save(filteredTrips, sessionName + "_trips", STORAGE_TYPES.OBJECT);
-        rerollTimer.current = setTimeout(() => {
-          console.log("reroll is allowed again");
-          handleReroll();
-        }, REROLL_TIME * 1000);
+        if (!free) {
+          // Normal reroll: arm the cooldown. A free reroll skips this entirely
+          // so the player can keep rerolling an unplaceable location.
+          rerollTime.current = new Date();
+          rerollTimer.current = setTimeout(() => {
+            console.log("reroll is allowed again");
+            handleReroll();
+          }, REROLL_TIME * 1000);
+        }
         setRefresh((prevState) => !prevState);
         setGenerating(false);
       } else if (loops > 5) {
@@ -480,7 +505,7 @@ export default function MapScreen({
         setGeneratingStatus(
           "Failed to reroll.\nRetrying. Attempt " + loops + " of " + 5,
         );
-        rerollSelectedLocation(id, name, loops + 1);
+        rerollSelectedLocation(id, name, loops + 1, free);
       }
     }
   };
@@ -590,30 +615,12 @@ export default function MapScreen({
         .map((location) => location.osmID)
         .filter((osmID) => osmID.startsWith("N")),
     );
-    let candidates: Candidate[] | null = await load(
-      sessionName + "_candidates",
-      STORAGE_TYPES.OBJECT,
+    setGeneratingStatus("Loading roads for the area...");
+    const candidates = await loadOrFetchCandidates(
+      { lat: loc.latitude, lon: loc.longitude },
+      parseInt(JSON.stringify(data.maximum_distance), 10),
+      bannedOsmIDs,
     );
-    if (!candidates || candidates.length === 0) {
-      setGeneratingStatus("Loading roads for the area...");
-      candidates = await fetchRoadCandidates(
-        { lat: loc.latitude, lon: loc.longitude },
-        parseInt(JSON.stringify(data.maximum_distance), 10),
-        bannedOsmIDs,
-      );
-      if (
-        candidates &&
-        candidates.length > 0 &&
-        sessionName &&
-        sessionName !== ""
-      ) {
-        await save(
-          candidates,
-          sessionName + "_candidates",
-          STORAGE_TYPES.OBJECT,
-        );
-      }
-    }
     if (loadedTrips === null && data.trips != null) {
       let index = 0;
       const tripAmount = Object.entries(data.trips).length;

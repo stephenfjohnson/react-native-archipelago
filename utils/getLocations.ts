@@ -6,6 +6,7 @@ import {
   calculateTheta,
   computeBbox,
   placeTrip,
+  selectCandidate,
 } from "./placement";
 import type { Candidate, LatLon } from "./placement";
 
@@ -452,7 +453,35 @@ export default async function getLocations(
       maxRadian,
       exclude,
     );
-    if (!placed) return { lat: 0, lon: 0, osmID: "0", duplicate: false };
+    if (!placed) {
+      // The trip's annulus contains no candidate at all — a thin/degenerate
+      // ring (e.g. min==max distance) or a home with no road at that exact
+      // distance. Rather than stranding the check at (0,0)/Null Island — which a
+      // reroll can't fix, since the ring stays empty — snap it to the nearest
+      // real road node, ignoring the distance floor, and allow overlap with an
+      // already-used node so it stacks on/near an existing pin (the marker's
+      // positional jitter keeps both tappable). The floor is relaxed ONLY here,
+      // when it is genuinely unsatisfiable, never on the normal path above.
+      const nearest = selectCandidate(
+        origin,
+        candidates,
+        origin,
+        0,
+        Number.POSITIVE_INFINITY,
+        bannedOsmIDs,
+      );
+      if (nearest) {
+        return {
+          lat: nearest.lat,
+          lon: nearest.lon,
+          osmID: nearest.osmID,
+          duplicate: true,
+        };
+      }
+      // Not even one non-banned candidate exists anywhere. Genuine dead end;
+      // surface the (0,0)/osmID "0" placeholder for a free reroll.
+      return { lat: 0, lon: 0, osmID: "0", duplicate: false };
+    }
     return {
       lat: placed.lat,
       lon: placed.lon,
