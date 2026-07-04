@@ -1129,9 +1129,18 @@ export default function MapScreen({
       {__DEV__ && (
         <Pressable
           style={[mapStyles.refreshButton, { top: insets.top + 60 }]}
-          onPress={() =>
-            handleDeathReceived("TEST", Date.now(), "Test death (dev trigger)")
-          }
+          onPress={() => {
+            // BROADCAST a DeathLink to every other DeathLink-enabled player so
+            // we can verify cross-device death on a second phone. The previous
+            // handler only replayed the *receive* path locally, so nothing ever
+            // left this client. sendDeathLink silently no-ops unless the tag is
+            // set, so enable it first — the mode (OFF/RESPAWN/TRAP) only governs
+            // what we do when RECEIVING, not whether we can send.
+            const self = client.players.self.alias;
+            client.deathLink.enableDeathLink();
+            client.deathLink.sendDeathLink(self, `${self} was hit by a car.`);
+            console.log(`[deathlink-dev] sent DeathLink as "${self}"`);
+          }}
         >
           <MaterialCommunityIcons name="skull" size={22} color={Theme.danger} />
         </Pressable>
