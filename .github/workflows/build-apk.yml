@@ -1,0 +1,41 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      # The Expo template signs release builds with the debug keystore by
+      # default, which is fine for sideloading the APK on a phone.
+      - name: Build APK
+        run: ./gradlew assembleRelease --no-daemon
+        working-directory: android
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: archipela-go-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
