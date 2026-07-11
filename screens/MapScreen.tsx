@@ -21,11 +21,12 @@ import {
   Alert,
   AppState,
   Image,
+  Platform,
   Pressable,
   Text,
   View,
 } from "react-native";
-import MapView, { Camera, LatLng, Marker } from "react-native-maps";
+import MapView, { Camera, LatLng, Marker, UrlTile } from "react-native-maps";
 
 import APMarkers from "./APMarkers";
 import AsyncAlert from "../components/AsyncAlert";
@@ -88,6 +89,8 @@ function MemoizedMap({
   HOME_LOCATION: LatLng;
 }>) {
   const mapRef = useRef<MapView | null>(null);
+  const { getSetting } = useContext(SettingsContext);
+  const USE_OSM_TILES = getSetting("USE_OSM_TILES", "boolean");
 
   const onMapReady = () => {
     let camera: Camera | null = null;
@@ -119,15 +122,32 @@ function MemoizedMap({
     }
   };
   return (
-    <MapView
-      ref={mapRef}
-      style={mapStyles.map}
-      userLocationUpdateInterval={1000}
-      showsUserLocation
-      onMapReady={onMapReady}
-    >
-      {children}
-    </MapView>
+    <>
+      <MapView
+        ref={mapRef}
+        style={mapStyles.map}
+        userLocationUpdateInterval={1000}
+        showsUserLocation
+        onMapReady={onMapReady}
+        mapType={
+          USE_OSM_TILES && Platform.OS === "android" ? "none" : "standard"
+        }
+      >
+        {USE_OSM_TILES && (
+          <UrlTile
+            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maximumZ={19}
+            shouldReplaceMapContent
+          />
+        )}
+        {children}
+      </MapView>
+      {USE_OSM_TILES && (
+        <Text style={mapStyles.osmAttribution}>
+          © OpenStreetMap contributors
+        </Text>
+      )}
+    </>
   );
 }
 

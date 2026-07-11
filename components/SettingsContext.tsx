@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { Platform } from "react-native";
 
 import { load, save, STORAGE_TYPES } from "../utils/storageHandler";
 import { locationInfo } from "./LocationInfoPopup";
@@ -110,6 +111,17 @@ const defaultSettings: Settings[] = [
       "\nIf true, sounds will play on disconnect, reconnect and when receiving items." +
       "\nDefault: true",
     value: true,
+  },
+  {
+    name: "USE_OSM_TILES",
+    displayName: "Use OpenStreetMap map tiles",
+    description:
+      "Show the map using OpenStreetMap tiles instead of Google Maps." +
+      "\nGoogle Maps only works if the app was built with a Google Maps API key, because Google requires the key to be baked into the app itself. OpenStreetMap tiles do not need an API key at all." +
+      "\nDefault: on if the app was built without a Google Maps API key, otherwise off",
+    value:
+      Platform.OS === "android" &&
+      !process.env.EXPO_PUBLIC_GOOGLE_API_KEY_ANDROID,
   },
   {
     name: "NEAR_ZOOM",

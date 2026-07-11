@@ -4,6 +4,7 @@ import MapView, {
   LatLng,
   MapMarker,
   Marker,
+  UrlTile,
 } from "react-native-maps";
 import mapStyles from "../styles/MapStyles";
 import React, { useContext, useEffect, useRef, useState } from "react";
@@ -12,6 +13,7 @@ import {
   BackHandler,
   Dimensions,
   NativeEventSubscription,
+  Platform,
   Pressable,
   Switch,
   Text,
@@ -134,6 +136,7 @@ export default function BannedLocations({
 }>) {
   const { getSetting, handleSettingChange } = useContext(SettingsContext);
   const HOME_LOCATION = getSetting("HOME_LOCATION", "object") as LatLng;
+  const USE_OSM_TILES = getSetting("USE_OSM_TILES", "boolean");
 
   const [visible, setVisible] = useState(false);
   const [smallCircleRadius, setSmallCircleRadius] = useState(500);
@@ -463,6 +466,9 @@ export default function BannedLocations({
         style={mapStyles.map}
         userLocationUpdateInterval={1000}
         showsUserLocation
+        mapType={
+          USE_OSM_TILES && Platform.OS === "android" ? "none" : "standard"
+        }
         initialRegion={{
           latitude: route.params.location.coords.latitude,
           longitude: route.params.location.coords.longitude,
@@ -470,6 +476,13 @@ export default function BannedLocations({
           longitudeDelta: 0.15,
         }}
       >
+        {USE_OSM_TILES && (
+          <UrlTile
+            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maximumZ={19}
+            shouldReplaceMapContent
+          />
+        )}
         <Circle
           radius={smallCircleRadius}
           center={
@@ -518,6 +531,11 @@ export default function BannedLocations({
           );
         })}
       </MapView>
+      {USE_OSM_TILES && (
+        <Text style={mapStyles.osmAttribution}>
+          © OpenStreetMap contributors
+        </Text>
+      )}
       {showAdjuster && (
         <View
           style={{
