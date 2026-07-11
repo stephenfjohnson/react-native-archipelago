@@ -1,8 +1,10 @@
 import { StyleSheet } from "react-native";
 
+import Theme from "./Theme";
+
 const settingsStyles = StyleSheet.create({
   settingsContainer: {
-    borderColor: "black",
+    borderColor: Theme.glassBorder,
   },
   list: {
     width: "90%",
@@ -14,6 +16,9 @@ const settingsStyles = StyleSheet.create({
     borderRadius: 1,
     elevation: 2,
     marginBottom: 3,
+  },
+  name: {
+    color: Theme.textPrimary,
   },
 });
 export default settingsStyles;

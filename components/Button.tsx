@@ -4,10 +4,12 @@ import {
   TextStyle,
   TouchableHighlight,
   TouchableHighlightProps,
+  View,
   ViewStyle,
 } from "react-native";
 
 import commonStyles from "../styles/CommonStyles";
+import Theme from "../styles/Theme";
 
 export default function Button({
   onPress,
@@ -33,10 +35,11 @@ export default function Button({
   return (
     <TouchableHighlight
       style={{ ...commonStyles.touchableHighlightButton, ...buttonStyle }}
+      underlayColor={Theme.accent}
       onPress={onPress}
       {...buttonProps}
     >
-      <>
+      <View style={commonStyles.buttonContent}>
         {children}
         {!removeText && (
           <Text
@@ -56,7 +59,7 @@ export default function Button({
             {endIcon}
           </>
         )}
-      </>
+      </View>
     </TouchableHighlight>
   );
 }

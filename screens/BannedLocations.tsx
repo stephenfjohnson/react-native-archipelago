@@ -29,6 +29,7 @@ import Slider from "@react-native-community/slider";
 import { CircularSlider } from "@v3ron/react-native-circular-slider";
 import Button from "../components/Button";
 import Colors from "../styles/Colors";
+import Theme from "../styles/Theme";
 import { locationInfo } from "../components/LocationInfoPopup";
 import { load, save } from "../utils/storageHandler";
 import { Settings, SettingsContext } from "../components/SettingsContext";
@@ -254,6 +255,7 @@ export default function BannedLocations({
           <Text
             style={{
               marginTop: 10,
+              color: Theme.textPrimary,
             }}
           >
             Tap and hold anywhere on the map to move your home location there.
@@ -267,7 +269,9 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10 }}>
+            <Text
+              style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}
+            >
               Use home location
             </Text>
             <View
@@ -290,7 +294,9 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10 }}>
+            <Text
+              style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}
+            >
               Minimum distance
             </Text>
             <View
@@ -339,7 +345,9 @@ export default function BannedLocations({
           <View
             style={{ borderRadius: 1, elevation: 2, padding: 5, marginTop: 8 }}
           >
-            <Text style={{ marginBottom: 3, padding: 10 }}>
+            <Text
+              style={{ marginBottom: 3, padding: 10, color: Theme.textPrimary }}
+            >
               Maximum distance
             </Text>
             <View
@@ -390,9 +398,9 @@ export default function BannedLocations({
       <View
         style={{
           height: "5%",
-          backgroundColor: "white",
+          backgroundColor: Theme.surface,
           borderBottomWidth: 2,
-          borderBlockColor: "lightgray",
+          borderBlockColor: Theme.glassBorder,
           flexDirection: "row",
         }}
       >
@@ -408,9 +416,9 @@ export default function BannedLocations({
             backHandler.current?.remove();
             navigation.goBack();
           }}
-          name="arrowleft"
+          name="arrow-left"
           size={30}
-          color="gray"
+          color={Theme.textSecondary}
           style={{ flex: 1, verticalAlign: "middle" }}
         />
 
@@ -433,19 +441,23 @@ export default function BannedLocations({
           top: 150,
           right: 12,
           zIndex: 9999,
-          backgroundColor: "white",
+          backgroundColor: Theme.surface,
           padding: 7,
           borderRadius: 1,
           elevation: 10,
           opacity: 0.75,
-          borderBlockColor: "lightgray",
+          borderBlockColor: Theme.glassBorder,
         }}
         onPress={() => {
           setVisible(true);
         }}
       >
         <View>
-          <AntDesign name="questioncircleo" size={24} color="black" />
+          <AntDesign
+            name="question-circle"
+            size={24}
+            color={Theme.textPrimary}
+          />
         </View>
       </Pressable>
       <MapLibreMap

@@ -56,6 +56,11 @@ export type Settings = {
    * Only used for numeric values. Minimum allowed value of the setting. If not set, 0 is the smallest value allowed.
    */
   minValue?: number;
+  /**
+   * Only used for enum settings. When present, the setting renders as a
+   * segmented control choosing between these options (value is a string).
+   */
+  options?: { label: string; value: string }[];
 };
 
 type getSettingType<T> = T extends "number"
@@ -177,6 +182,22 @@ const defaultSettings: Settings[] = [
       "\nTurning this off might improve battery life, and removes the need for background location permission." +
       "\nDefault: true",
     value: true,
+  },
+  {
+    name: "DEATH_LINK_MODE",
+    displayName: "DeathLink",
+    description:
+      "How the app reacts when another player in a DeathLink game dies." +
+      "\nOff: DeathLink is disabled." +
+      "\nRespawn: all checks lock and collection is disabled until you walk back to where your locations were generated." +
+      "\nTrap: a random trap is announced (honor system)." +
+      "\nDefault: Off",
+    value: "OFF",
+    options: [
+      { label: "Off", value: "OFF" },
+      { label: "Respawn", value: "RESPAWN" },
+      { label: "Trap", value: "TRAP" },
+    ],
   },
   {
     name: "CAN_ALWAYS_SEND_LOCATION",

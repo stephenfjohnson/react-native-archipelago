@@ -28,7 +28,8 @@
         "expo-audio"
       ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "./plugins/withBackgroundConnectionService"
     ],
     "splash": {
       "image": "./assets/splash.png",

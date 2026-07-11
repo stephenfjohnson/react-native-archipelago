@@ -10,6 +10,7 @@ import { MAP_ID_TO_ITEM } from "../utils/handleItems";
 import { SettingsContext } from "./SettingsContext";
 import { getDistanceFromLatLonInKm } from "../utils/getLocations";
 import { banLocation } from "../screens/BannedLocations";
+import Theme from "../styles/Theme";
 
 /**Time between location rerolls in seconds */
 export const REROLL_TIME = 120;
@@ -47,16 +48,23 @@ export default function LocationInfoPopup({
   rerollAllowed,
   rerollTime,
   setLocationAsFound,
+  respawning,
 }: Readonly<{
   visible: boolean;
   closePopup: () => void;
   location: trip | null;
   client: Client;
   receivedKeys: number;
-  rerollSelectedLocation: (id: number, name: string) => Promise<void>;
+  rerollSelectedLocation: (
+    id: number,
+    name: string,
+    loops?: number,
+    free?: boolean,
+  ) => Promise<void>;
   rerollAllowed: React.MutableRefObject<boolean>;
   rerollTime: React.MutableRefObject<Date>;
   setLocationAsFound: (id: number) => void;
+  respawning: boolean;
 }>) {
   const [locationInfo, setLocationInfo] = useState<locationInfo | null>(null);
   const [locationHint, setLocationHint] = useState<locationHintInfo | null>(
@@ -107,8 +115,14 @@ export default function LocationInfoPopup({
           {
             text: "Reroll",
             onPress: () => {
-              rerollSelectedLocation(locationInfo?.id, locationInfo.name);
-              rerollAllowed.current = true;
+              // Free reroll: this location is invalid (0,0 / osmID "0"), so it
+              // must not cost a cooldown — matches the alert text above.
+              rerollSelectedLocation(
+                locationInfo?.id,
+                locationInfo.name,
+                0,
+                true,
+              );
               handleClosePopup();
             },
           },
@@ -211,6 +225,10 @@ export default function LocationInfoPopup({
   };
 
   const handleCheckLocation = async () => {
+    if (respawning) {
+      Alert.alert("You died", "Walk back home to respawn before collecting.");
+      return;
+    }
     if (locationInfo !== null) {
       const CAN_ALWAYS_SEND_LOCATION = getSetting(
         "CAN_ALWAYS_SEND_LOCATION",
@@ -302,7 +320,7 @@ export default function LocationInfoPopup({
                 style={{
                   fontSize: 10,
                   maxWidth: "70%",
-                  color: "gray",
+                  color: Theme.textSecondary,
                 }}
               >
                 Next reroll available in about{" "}
@@ -317,7 +335,11 @@ export default function LocationInfoPopup({
           </View>
           <Pressable>
             <Text
-              style={{ fontSize: 12, color: "gray", textAlign: "right" }}
+              style={{
+                fontSize: 12,
+                color: Theme.textSecondary,
+                textAlign: "right",
+              }}
               selectable
             >
               osm ID:{locationInfo.coords.osmID}
@@ -339,17 +361,19 @@ export default function LocationInfoPopup({
               marginBottom: 10,
             }}
           >
-            <Text>{locationInfo.name}</Text>
+            <Text style={{ color: Theme.textPrimary }}>
+              {locationInfo.name}
+            </Text>
           </View>
           {locationHint && (
-            <Text style={{ marginBottom: 10 }}>
+            <Text style={{ marginBottom: 10, color: Theme.textPrimary }}>
               {locationHint.receivingPlayer}'s {locationHint.item} can be found
               here.
             </Text>
           )}
           {!locationHint && (
             <>
-              <Text style={{ marginBottom: 10 }}>
+              <Text style={{ marginBottom: 10, color: Theme.textPrimary }}>
                 {canHint && "This location can be hinted. "}A hint requires{" "}
                 {client.room.hintCost} hint points. You currently have{" "}
                 {client.room.hintPoints}.
@@ -364,7 +388,7 @@ export default function LocationInfoPopup({
                   }}
                 />
               ) : (
-                <Text style={{ marginBottom: 10, color: "gray" }}>
+                <Text style={{ marginBottom: 10, color: Theme.textSecondary }}>
                   {client.socket.connected
                     ? "You do not have enough hint points to hint this location"
                     : "You are not currently connected"}
@@ -374,7 +398,7 @@ export default function LocationInfoPopup({
           )}
           {locationInfo.keysNeeded > 0 && (
             <>
-              <Text style={{ marginBottom: 10 }}>
+              <Text style={{ marginBottom: 10, color: Theme.textPrimary }}>
                 This location requires {locationInfo.keysNeeded} keys, and you
                 currently have {receivedKeys}
               </Text>
@@ -391,7 +415,9 @@ export default function LocationInfoPopup({
                         }}
                       />
                     ) : (
-                      <Text style={{ marginBottom: 10, color: "gray" }}>
+                      <Text
+                        style={{ marginBottom: 10, color: Theme.textSecondary }}
+                      >
                         {client.socket.connected
                           ? "You do not have enough hint points to hint a key"
                           : "You are not currently connected"}
@@ -407,7 +433,7 @@ export default function LocationInfoPopup({
                       style={{
                         marginBottom: 10,
                         fontSize: 12,
-                        color: hint.found ? "darkgreen" : "darkred",
+                        color: hint.found ? Theme.success : Theme.danger,
                       }}
                     >
                       {client.players.self.alias}'s {hint.item} is at{" "}
@@ -419,14 +445,15 @@ export default function LocationInfoPopup({
               )}
             </>
           )}
-          {(getSetting("CAN_ALWAYS_SEND_LOCATION", "boolean") ||
-            receivedKeys >= locationInfo.keysNeeded) && (
-            <Button
-              onPress={() => handleCheckLocation()}
-              text="Check location"
-              buttonStyle={{ marginBottom: 10 }}
-            ></Button>
-          )}
+          {!respawning &&
+            (getSetting("CAN_ALWAYS_SEND_LOCATION", "boolean") ||
+              receivedKeys >= locationInfo.keysNeeded) && (
+              <Button
+                onPress={() => handleCheckLocation()}
+                text="Check location"
+                buttonStyle={{ marginBottom: 10 }}
+              ></Button>
+            )}
         </View>
       )}
     </Popup>

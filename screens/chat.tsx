@@ -8,6 +8,7 @@ import { ClientContext } from "../components/ClientContext";
 import chatStyles from "../styles/ChatStyles";
 import Colors from "../styles/Colors";
 import commonStyles from "../styles/CommonStyles";
+import Theme from "../styles/Theme";
 
 export type messages =
   | any[]
@@ -83,7 +84,10 @@ const ChatLine = memo(function chatLine({
       style = { ...style, color: Colors.green };
       break;
     case "color":
-      style = { ...style, color: msgPart.color ? msgPart.color : "black" };
+      style = {
+        ...style,
+        color: msgPart.color ? msgPart.color : Theme.textPrimary,
+      };
       break;
     default:
       break;
@@ -234,7 +238,7 @@ export default function Chat({
         nestedScrollEnabled
       >
         {messages.map((message, index) => (
-          <>
+          <React.Fragment key={`message-${index}`}>
             {index !== 0 && (
               <View
                 style={{
@@ -246,9 +250,9 @@ export default function Chat({
             <ChatLine
               message={message}
               index={index}
-              key={`message-${index}`}
+              key={`message-${index}-line`}
             />
-          </>
+          </React.Fragment>
         ))}
       </ScrollView>
       <View style={chatStyles.chatInputBox}>

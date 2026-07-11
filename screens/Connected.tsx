@@ -1,7 +1,9 @@
 import {
-  createMaterialTopTabNavigator,
-  MaterialTopTabBarProps,
-} from "@react-navigation/material-top-tabs";
+  createBottomTabNavigator,
+  BottomTabNavigationProp,
+} from "@react-navigation/bottom-tabs";
+import GlassTabBar from "../components/glass/GlassTabBar";
+import { glassTabScreenOptions } from "../components/glass/GlassTabBarBackground";
 import { PrintJSONPacket } from "archipelago.js";
 import * as Location from "expo-location";
 import React, { useContext, useEffect, useRef, useState } from "react";
@@ -15,7 +17,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import MapScreen from "./MapScreen";
 import Chat, { messages } from "./chat";
@@ -24,11 +25,15 @@ import { ClientContext } from "../components/ClientContext";
 import { ErrorContext } from "../components/ErrorContext";
 import { SettingsContext } from "../components/SettingsContext";
 import HintsScreen from "./HintsScreen";
-import Colors from "../styles/Colors";
+import Theme from "../styles/Theme";
 import playAudio from "../utils/playAudio";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import {
+  startConnectionService,
+  stopConnectionService,
+} from "../utils/backgroundConnection";
 
-const Tab = createMaterialTopTabNavigator();
+const Tab = createBottomTabNavigator();
 
 export default function Connected({
   route,
@@ -37,7 +42,7 @@ export default function Connected({
   route: {
     params: { sessionName: string };
   };
-  navigation: MaterialTopTabBarProps["navigation"];
+  navigation: BottomTabNavigationProp<any>;
 }>) {
   const { sessionName } = route.params;
   const { client, connectionInfoRef } = useContext(ClientContext);
@@ -53,10 +58,12 @@ export default function Connected({
 
   const [messages, setMessages] = useState<messages>([]);
 
-  const insets = useSafeAreaInsets();
   const { setError } = useContext(ErrorContext);
   const [allowedLocation, setAllowedLocation] = useState(false);
   const retryCountRef = useRef<number>(0);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const backHandler = useRef<NativeEventSubscription | undefined>(undefined);
   const isDisconnecting = useRef(false);
   const [disconnected, setDisconnected] = useState<boolean>(false);
@@ -183,6 +190,8 @@ export default function Connected({
     client.socket.off("printJSON", handleMessages);
     console.log("disconnecting...");
     client.socket.disconnect();
+    void stopConnectionService();
+    clearTimeout(reconnectTimeoutRef.current);
     setMessages([]);
     navigation.reset({ routes: [{ name: "connect" }] });
     deactivateKeepAwake("generating");
@@ -193,6 +202,11 @@ export default function Connected({
     const info = connectionInfoRef?.current;
     if (info) {
       await client.login(info.url, info.name, info.game, info.connectionInfo);
+      // Reconnected — reset the retry counter so a later disconnect cycle
+      // starts backoff fresh instead of giving up almost immediately.
+      retryCountRef.current = 0;
+      // Reconnected — the service may have been stopped by "Continue offline".
+      void startConnectionService();
       setMessages((prevState) => [
         ...prevState,
         [
@@ -248,6 +262,7 @@ export default function Connected({
             {
               text: "Continue offline",
               onPress: () => {
+                void stopConnectionService();
                 setDisconnected(true);
               },
             },
@@ -262,8 +277,15 @@ export default function Connected({
             },
           ],
         ]);
+        // Capped exponential backoff (2s, 4s, 8s, then 10s) instead of an
+        // immediate self-recursion — otherwise a backgrounded device with no
+        // network busy-loops and blasts the log. On foreground the next
+        // scheduled attempt succeeds. Only retry when we haven't given up.
+        const delay = Math.min(2000 * 2 ** (retryCountRef.current - 1), 10000);
+        reconnectTimeoutRef.current = setTimeout(() => {
+          automaticReconnection();
+        }, delay);
       }
-      automaticReconnection();
     }
   };
 
@@ -281,6 +303,7 @@ export default function Connected({
           {
             text: "Continue offline",
             onPress: () => {
+              void stopConnectionService();
               setDisconnected(true);
             },
           },
@@ -335,13 +358,22 @@ export default function Connected({
 
     askLocationPermission();
     if (KEEP_AWAKE) activateKeepAwakeAsync("setting");
+
+    // We arrive here already connected — keep an Android foreground service
+    // running for the session so the OS doesn't cut networking (and close the
+    // socket) while backgrounded. Safety-net stop on any unmount path.
+    void startConnectionService();
+    return () => {
+      void stopConnectionService();
+      clearTimeout(reconnectTimeoutRef.current);
+    };
   }, []);
 
   return (
     <Tab.Navigator
       initialRouteName="Chat"
-      style={{ paddingTop: insets.top }}
-      screenOptions={{ swipeEnabled: false }}
+      screenOptions={{ ...glassTabScreenOptions, tabBarHideOnKeyboard: true }}
+      tabBar={(props) => <GlassTabBar {...props} />}
     >
       <Tab.Screen name="Chat">
         {(props) => (
@@ -390,13 +422,17 @@ export default function Connected({
                   <View
                     style={{
                       zIndex: 1000,
-                      backgroundColor: Colors.white,
+                      backgroundColor: Theme.surface,
+                      borderWidth: 1,
+                      borderColor: Theme.glassBorder,
                       borderRadius: 5,
                       marginTop: 5,
                       padding: 2,
                     }}
                   >
-                    <Text>Lost connection.{"\n"}Reconnecting...</Text>
+                    <Text style={{ color: Theme.textPrimary }}>
+                      Lost connection.{"\n"}Reconnecting...
+                    </Text>
                   </View>
                 </View>
               )}

@@ -1,177 +1,140 @@
-import { FontAwesome } from "@expo/vector-icons"; // Version can be specified in package.json
-import React, { ReactNode } from "react";
+import { FontAwesome } from "@expo/vector-icons";
+import React from "react";
 import {
+  Image,
+  ImageSourcePropType,
+  Linking,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Linking,
-  Image,
-  StyleSheet,
-  ImageSourcePropType,
-  ScrollView,
 } from "react-native";
+
+import GlassSurface from "./glass/GlassSurface";
+import Theme from "../styles/Theme";
 
 const LicenseItem = ({
   logoLink,
   logo,
-  MainTextLink,
+  mainTextLink,
   mainText,
-  subTextLink,
   subText,
+  first,
 }: {
   logoLink?: string;
   logo?: ImageSourcePropType;
-  MainTextLink?: string;
+  mainTextLink?: string;
   mainText?: string;
-  subTextLink?: string;
   subText?: string;
-}) => {
-  return (
-    <View style={styles.cardShadow}>
-      <View style={styles.card}>
-        {logo && (
-          <TouchableOpacity
-            onPress={() => (logoLink ? Linking.openURL(logoLink) : null)}
-          >
-            <Image source={logo} style={styles.image} />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          onPress={() => (MainTextLink ? Linking.openURL(MainTextLink) : null)}
-          style={styles.item}
-        >
-          <View style={{ maxWidth: "90%" }}>
-            <Text style={styles.name}>{mainText}</Text>
-            <Link style={styles.text} url={subTextLink ?? ""}>
-              {subText}
-            </Link>
-          </View>
-          <FontAwesome
-            style={{ alignSelf: "center" }}
-            color="#34495e"
-            size={16}
-            name="chevron-right"
-          />
-        </TouchableOpacity>
-      </View>
+  first?: boolean;
+}) => (
+  <TouchableOpacity
+    style={[styles.row, !first && styles.divider]}
+    activeOpacity={0.6}
+    onPress={() =>
+      (mainTextLink || logoLink) &&
+      Linking.openURL((mainTextLink ?? logoLink) as string)
+    }
+  >
+    <View style={styles.logoSlot}>
+      {logo && <Image source={logo} style={styles.image} />}
     </View>
-  );
-};
+    <View style={styles.textCol}>
+      <Text style={styles.name} numberOfLines={2}>
+        {mainText}
+      </Text>
+      {subText ? (
+        <Text style={styles.sub} numberOfLines={1}>
+          {subText}
+        </Text>
+      ) : null}
+    </View>
+    <FontAwesome
+      name="chevron-right"
+      size={13}
+      color={Theme.textTertiary}
+      style={styles.chevron}
+    />
+  </TouchableOpacity>
+);
 
 export default function APLicense() {
   return (
-    <ScrollView
-      style={styles.container}
-      nestedScrollEnabled
-      showsVerticalScrollIndicator={false}
-    >
+    <GlassSurface radius={Theme.radius.md} style={styles.group}>
       <LicenseItem
-        MainTextLink="https://www.openstreetmap.org/copyright"
-        mainText="Location data provided by OpenStreetMap"
+        first
+        mainTextLink="https://www.openstreetmap.org/copyright"
+        mainText="Location data by OpenStreetMap"
         subText="Open Database License"
-        subTextLink="https://www.openstreetmap.org/copyright"
       />
       <LicenseItem
         logoLink="https://github.com/ArchipelagoMW/Archipelago"
         logo={require("../assets/color-icon.png")}
-        MainTextLink="http://creativecommons.org/licenses/by-nc/4.0/"
-        mainText="The Archipelago logo © 2022 by Krista Corkos and Christopher Wilson"
-        subTextLink="http://creativecommons.org/licenses/by-nc/4.0/"
-        subText="Attribution-NonCommercial 4.0 International"
+        mainTextLink="http://creativecommons.org/licenses/by-nc/4.0/"
+        mainText="Archipelago logo © 2022 Krista Corkos & Christopher Wilson"
+        subText="CC Attribution-NonCommercial 4.0"
       />
       <LicenseItem
-        MainTextLink="https://github.com/NewSoupVi/ArchipelagoJingles/"
-        mainText="Archipelago jingles created by NewSoupVi"
-        subTextLink="https://github.com/NewSoupVi/ArchipelagoJingles/blob/main/LICENSE.md"
+        mainTextLink="https://github.com/NewSoupVi/ArchipelagoJingles/"
+        mainText="Archipelago jingles by NewSoupVi"
         subText="MIT License"
       />
       <LicenseItem
         logo={require("../assets/archipela-go-logo_full.png")}
-        mainText="The Archipela-Go! Logo created by @combo89 on the Archipelago discord server"
-        subText="Based on the Archipelago logo."
+        mainText="Archipela-Go! logo by @combo89"
+        subText="Based on the Archipelago logo"
       />
       <LicenseItem
         logoLink="https://sunny.garden/@linkhs"
         logo={require("../assets/APMarker_blue.png")}
-        MainTextLink="https://sunny.garden/@linkhs"
-        mainText="The Archipelago Map Markers created by @linkhs on the Archipelago discord server"
-        subText="Based on the Archipelago logo."
+        mainTextLink="https://sunny.garden/@linkhs"
+        mainText="Map markers by @linkhs"
+        subText="Based on the Archipelago logo"
       />
-      <View style={styles.cardShadow}></View>
-    </ScrollView>
+    </GlassSurface>
   );
 }
 
-const Link = ({
-  url,
-  style,
-  children,
-}: {
-  url: string;
-  style: object;
-  children?: ReactNode | ReactNode[];
-}) => (
-  <Text
-    style={style}
-    numberOfLines={1}
-    onPress={() => url && Linking.openURL(url)}
-  >
-    {children}
-  </Text>
-);
-
 const styles = StyleSheet.create({
-  container: {
-    borderWidth: 2,
-    borderColor: "rgba(56, 55, 55, 0.18)",
-    marginHorizontal: 12,
-    borderRadius: 4,
-    marginTop: 6,
-    marginBottom: 6,
-    height: 250,
+  group: {
+    marginHorizontal: 16,
   },
-  card: {
-    borderRadius: 4,
-    maxHeight: 150,
-    overflow: "hidden",
+  row: {
     flexDirection: "row",
-    backgroundColor: "white",
-    alignItems: "stretch",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
-  cardShadow: {
-    marginHorizontal: 6,
-    marginVertical: 6,
-    shadowColor: "black",
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 2,
+  divider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Theme.glassBorder,
   },
-  item: {
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    flex: 1,
-    justifyContent: "space-between",
-    flexDirection: "row",
-    backgroundColor: "transparent",
-    maxWidth: "100%",
-    flexWrap: "wrap",
-  },
-  name: {
-    fontWeight: "bold",
-    fontSize: 16,
+  logoSlot: {
+    width: 30,
+    height: 30,
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   image: {
-    width: 96,
-    maxWidth: 96,
-    maxHeight: 96,
-    flex: 1,
-    borderRadius: 0,
+    width: 28,
+    height: 28,
     resizeMode: "contain",
-    marginTop: 8,
   },
-
-  text: {
-    color: "#34495e",
-    marginTop: 3,
+  textCol: {
+    flex: 1,
+  },
+  name: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Theme.textPrimary,
+  },
+  sub: {
+    fontSize: 12,
+    color: Theme.textTertiary,
+    marginTop: 2,
+  },
+  chevron: {
+    marginLeft: 8,
   },
 });

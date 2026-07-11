@@ -9,6 +9,7 @@ import {
   shortMacguffinString,
 } from "../utils/handleItems";
 import Colors from "../styles/Colors";
+import Theme from "../styles/Theme";
 
 function MacguffinHuntTracker({
   goalString,
@@ -171,7 +172,7 @@ export default function APInfoPopup({
         return (
           <>
             <Text style={styles.goal}>Allsanity</Text>
-            <Text>
+            <Text style={{ color: Theme.textPrimary }}>
               {"\n"}Collect all remaining locations to achieve the goal.
             </Text>
           </>
@@ -181,7 +182,9 @@ export default function APInfoPopup({
         return (
           <>
             <Text style={styles.goal}>Macguffin hunt</Text>
-            <Text>{"\n"}Find the remaining letters to achieve the goal.</Text>
+            <Text style={{ color: Theme.textPrimary }}>
+              {"\n"}Find the remaining letters to achieve the goal.
+            </Text>
           </>
         );
       default:
@@ -208,7 +211,9 @@ export default function APInfoPopup({
             marginBottom: 10,
           }}
         >
-          <Text>Current goal: {getGoal()}</Text>
+          <Text style={{ color: Theme.textPrimary }}>
+            Current goal: {getGoal()}
+          </Text>
         </View>
         {goalMode === GOAL_MAP.ALLSANITY && (
           <Text style={styles.item}>Remaining checks: {remainingTrips}</Text>
@@ -253,11 +258,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   letterNotFound: {
-    color: Colors.black,
+    color: Theme.textPrimary,
     fontSize: 30,
     fontWeight: "bold",
   },
-  item: { marginBottom: 10 },
+  item: { marginBottom: 10, color: Theme.textPrimary },
   button: { marginTop: 10, marginBottom: 10 },
-  goal: { fontWeight: "bold", color: Colors.black },
+  goal: { fontWeight: "bold", color: Theme.textPrimary },
 });

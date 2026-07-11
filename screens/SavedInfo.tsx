@@ -9,8 +9,10 @@ import Button from "../components/Button";
 import { APInfo, ClientContext } from "../components/ClientContext";
 import { ErrorContext } from "../components/ErrorContext";
 import Popup from "../components/Popup";
+import AmbientDots from "../components/glass/AmbientDots";
 import commonStyles from "../styles/CommonStyles";
 import settingsStyles from "../styles/settingsStyles";
+import Theme from "../styles/Theme";
 import {
   STORAGE_TYPES,
   getAllNames,
@@ -22,7 +24,7 @@ import { MaterialTopTabBarProps } from "@react-navigation/material-top-tabs";
 import { itemsHandlingFlags } from "archipelago.js";
 
 const EXTERNAL_EXTRA_DATA: string[] = ["__settings", "__bannedLocations"]; // include extra storage keys you want to handle yourself in this array
-export const EXTRA_DATA: { name: string; type: string }[] = [
+export const EXTRA_DATA: { name: string; type: `${STORAGE_TYPES}` }[] = [
   { name: "_trips", type: STORAGE_TYPES.OBJECT },
   { name: "_itemIndex", type: STORAGE_TYPES.NUMBER },
   { name: "_checked", type: STORAGE_TYPES.OBJECT },
@@ -46,14 +48,23 @@ const ListItem = ({
   return (
     <TouchableHighlight
       activeOpacity={0.6}
-      underlayColor="#DDDDDD"
+      underlayColor={Theme.glassHighlight}
       style={settingsStyles.item}
       onPress={() => {
         connectToAp(item);
       }}
     >
-      <>
-        <Text style={{ fontSize, flex: 8 }}>{item}</Text>
+      <View
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-around",
+        }}
+      >
+        <Text style={{ fontSize, flex: 8, color: Theme.textPrimary }}>
+          {item}
+        </Text>
         <Button
           text=""
           removeText
@@ -72,7 +83,7 @@ const ListItem = ({
           buttonStyle={{ flex: 1, marginLeft: 10 }}
           endIcon={<AntDesign name="delete" size={20} color="white" />}
         />
-      </>
+      </View>
     </TouchableHighlight>
   );
 };
@@ -314,6 +325,7 @@ export default function SavedInfo({
     <View
       style={{ height: "100%", flex: 1, alignItems: "center", marginTop: 3 }}
     >
+      <AmbientDots />
       <Popup
         visible={modalVisible}
         closePopup={() => {
@@ -360,7 +372,11 @@ export default function SavedInfo({
           data={savedInfo}
           estimatedItemSize={83}
           nestedScrollEnabled
-          ListEmptyComponent={<Text>No saved connections</Text>}
+          ListEmptyComponent={
+            <Text style={{ color: Theme.textPrimary }}>
+              No saved connections
+            </Text>
+          }
           renderItem={({ item }) => (
             <ListItem
               item={item}

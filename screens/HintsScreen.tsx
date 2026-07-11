@@ -4,6 +4,7 @@ import { Table } from "@coligo/react-native-table";
 import { ClientContext } from "../components/ClientContext";
 import { Hint, NetworkHint } from "archipelago.js";
 import Colors from "../styles/Colors";
+import Theme from "../styles/Theme";
 
 type hintListItem = {
   receivingPlayer: string;
@@ -152,21 +153,23 @@ export default function HintsScreen() {
       label: "Location",
       key: "location",
       render: (location: string) => (
-        <Text style={{ color: "green" }}>{location}</Text>
+        <Text style={{ color: Theme.success }}>{location}</Text>
       ),
       sortable: true,
     },
     {
       label: "Entrance",
       key: "entrance",
-      render: (entrance: string) => <Text>{entrance}</Text>,
+      render: (entrance: string) => (
+        <Text style={{ color: Theme.textPrimary }}>{entrance}</Text>
+      ),
       sortable: true,
     },
     {
       label: "Status",
       key: "status",
       render: (status: boolean) => (
-        <Text style={{ color: status ? "darkgreen" : "darkred" }}>
+        <Text style={{ color: status ? Theme.success : Theme.danger }}>
           {status ? "Found" : "Not Found"}
         </Text>
       ),
@@ -176,7 +179,7 @@ export default function HintsScreen() {
 
   return (
     <>
-      <Text style={{ color: "gray" }}>
+      <Text style={{ color: Theme.textSecondary }}>
         Note: The status of hints does not update while connected
       </Text>
       <Table
@@ -184,15 +187,15 @@ export default function HintsScreen() {
         columns={columns}
         keyExtractor="location"
         sortingIcons={{
-          asc: <Text>↑</Text>,
-          desc: <Text>↓</Text>,
+          asc: <Text style={{ color: Theme.textPrimary }}>↑</Text>,
+          desc: <Text style={{ color: Theme.textPrimary }}>↓</Text>,
         }}
         borderStyle={{
           showVertical: true,
           showHorizontalBody: true,
           showHorizontalHeader: true,
           borderWidth: 1,
-          borderColor: "#ccc",
+          borderColor: Theme.glassBorder,
         }}
         cellPadding={{
           paddingHorizontal: 5,

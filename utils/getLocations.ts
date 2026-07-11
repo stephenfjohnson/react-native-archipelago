@@ -1,16 +1,93 @@
 import { LocationObjectCoords } from "expo-location";
 import { locationInfo } from "../components/LocationInfoPopup";
+import {
+  deg2rad,
+  getDistanceFromLatLonInKm,
+  calculateTheta,
+  computeBbox,
+  placeTrip,
+  selectCandidate,
+} from "./placement";
+import type { Candidate, LatLon } from "./placement";
+
+export { getDistanceFromLatLonInKm } from "./placement";
+
+/**
+ * What map features location checks may be placed on:
+ * - "roads": nodes of walkable roads and paths (the original behavior).
+ * - "pois": road nodes plus points of interest like trees, benches and shops.
+ *   Controlled by the POI_LOCATIONS setting; useful in malls and parks.
+ * - "indoor": only points of interest mapped as being indoors (Simple Indoor
+ *   Tagging: level/indoor/location tags). Controlled by POI_INDOOR_ONLY.
+ */
+export type PoiMode = "roads" | "pois" | "indoor";
+
+/**
+ * Overpass filters for the point of interest categories that checks can be
+ * placed on. `sel` is the node selector the filters are applied to, e.g.
+ * `node(around:200, 1.2,3.4)` or `node.indoor`. Only nodes are used, so the
+ * resulting osmIDs stay in the same "N<id>" format as road way-nodes.
+ */
+const poiNodeFilters = (sel: string) => `
+    ${sel}["natural"="tree"];
+    ${sel}["amenity"];
+    ${sel}["shop"];
+    ${sel}["leisure"];
+    ${sel}["tourism"];
+    ${sel}["historic"];`;
 
 const DISTANCE_LENIENCY = 0.1;
+
+/** Effective [minDist, maxDist] for a trip, preserving distance_tier scaling and
+ *  the thin-annulus-at-floor clamp for low tiers. */
+function annulusBounds(
+  maximum_distance: number,
+  minimum_distance: number,
+  distance_tier: number,
+): { minDist: number; maxDist: number } {
+  let maxDist = (maximum_distance / 10) * distance_tier;
+  let minDist = minimum_distance;
+  if (maxDist < minimum_distance)
+    maxDist = minimum_distance * (1 + DISTANCE_LENIENCY);
+  if (minDist > maximum_distance)
+    minDist = maximum_distance * (1 - DISTANCE_LENIENCY);
+  return { minDist, maxDist };
+}
+
+/**
+ * Overpass API endpoints, tried in order. If one is down, overloaded, or
+ * unreachable, the next is used as a fallback so generation keeps working.
+ * See https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances
+ *
+ * Note: both instances advertise IPv6. On a network with broken IPv6 routing,
+ * React Native's fetch tries IPv6 first and fails with "Network request failed"
+ * without falling back to IPv4 (unlike curl/browsers), so all endpoints fail.
+ * If generation fails only on one network, check that its IPv6 works.
+ */
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.openstreetmap.fr/api/interpreter",
+];
+
+/** Abort a single Overpass request if it hasn't responded in time. */
+const OVERPASS_TIMEOUT_MS = 15000;
+
+/** Above this max distance the single-area query is skipped in favor of the
+ *  per-location fallback (avoids an enormous bbox / oversized Overpass query). */
+export const AREA_QUERY_MAX_DISTANCE_M = 10000;
+
+/**
+ * Maximum number of times we re-roll coordinates when Overpass returns nothing
+ * (endpoint unavailable, or no matching road near the random point) before
+ * giving up and returning a "0" result to the caller.
+ */
+const MAX_GENERATION_RETRIES = 30;
 
 /**
  * Wait provided amount of time (in milliseconds)
  */
-const wait = async (time: number) => {
-  setTimeout(() => {
-    return;
-  }, time);
-};
+const wait = (time: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, time));
 
 /**
  * Return a openstreetmaps 'lookup' API url
@@ -32,57 +109,27 @@ const getOSMTypeAndIdAPI = (
   return `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&zoom=${zoom}&addressdetails=1&extratags=1&format=json`;
 };
 
-/**
- * Overpass filters for points of interest that location checks can be placed on
- * when the POI_LOCATIONS setting is enabled.
- * Only nodes are used, so the resulting osmID stays in the same "N<id>" format
- * as the nodes belonging to ways.
- */
-const poiFilters = (latitude: number, longitude: number) => {
-  return `(
-    ._;
-    node(around:200, ${latitude},${longitude})["natural"="tree"];
-    node(around:200, ${latitude},${longitude})["amenity"];
-    node(around:200, ${latitude},${longitude})["shop"];
-    node(around:200, ${latitude},${longitude})["leisure"];
-    node(around:200, ${latitude},${longitude})["tourism"];
-    node(around:200, ${latitude},${longitude})["historic"];
-  );`;
-};
-
-/**
- * Overpass query for points of interest that are mapped as being indoors,
- * following the Simple Indoor Tagging schema (level, indoor and location tags).
- * Replaces the road based query when the POI_INDOOR_ONLY setting is enabled.
- */
-const indoorPoiQuery = (latitude: number, longitude: number) => {
-  return `[out:json];
-  (
-    node(around:200, ${latitude},${longitude})["indoor"];
-    node(around:200, ${latitude},${longitude})["level"];
-    node(around:200, ${latitude},${longitude})["location"="indoor"];
-  )->.indoor;
-  (
-    node.indoor["natural"="tree"];
-    node.indoor["amenity"];
-    node.indoor["shop"];
-    node.indoor["leisure"];
-    node.indoor["tourism"];
-    node.indoor["historic"];
-  );
-  out skel;`;
-};
-
 const fetchOverpassInfo = async (
   latitude: number,
   longitude: number,
-  bannedLocationString: string,
-  includePOIs: boolean,
-  indoorOnly: boolean,
+  poiMode: PoiMode,
 ) => {
   console.log("getting overpass info from lat lon:", latitude, longitude);
-  const roadQuery = `[out:json];
-  way(around:200, ${latitude},${longitude})->.a;
+  const around = `(around:200, ${latitude},${longitude})`;
+  let query: string;
+  if (poiMode === "indoor") {
+    query = `[out:json];
+  (
+    node${around}["indoor"];
+    node${around}["level"];
+    node${around}["location"="indoor"];
+  )->.indoor;
+  (${poiNodeFilters("node.indoor")}
+  );
+  out skel;`;
+  } else {
+    query = `[out:json];
+  way${around}->.a;
   (
     way.a["tracktype"="grade1"];
     way.a["tracktype"="grade2"];
@@ -102,26 +149,164 @@ const fetchOverpassInfo = async (
     way.a["highway"="tertiary"]["maxspeed"~"^[0-5][0-9]?$"];
     way.a["highway"="secondary"]["maxspeed"~"^[0-3][0-9]? mph$"];
     way.a["highway"="tertiary"]["maxspeed"~"^[0-3][0-9]? mph$"];
-    ${bannedLocationString}
   );
   >;
-  ${includePOIs ? poiFilters(latitude, longitude) : ""}
+  ${
+    poiMode === "pois"
+      ? `(
+    ._;${poiNodeFilters(`node${around}`)}
+  );`
+      : ""
+  }
   out skel;`;
-  const query =
-    includePOIs && indoorOnly
-      ? indoorPoiQuery(latitude, longitude)
-      : roadQuery;
-  const data = await fetch("https://overpass.private.coffee/api/interpreter", {
-    method: "POST",
-    body: "data=" + encodeURIComponent(query),
-    referrer: "com.aki665.archipelago",
-    headers: { "user-agent": "archipela-go/0.7.0" },
-  });
-  const res: {
-    elements: [{ type: string; id: number; lat: number; lon: number }];
-  } = await data.json();
-  return res.elements;
+  }
+  let lastError: unknown = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+    try {
+      const data = await fetch(endpoint, {
+        method: "POST",
+        body: "data=" + encodeURIComponent(query),
+        referrer: "com.aki665.archipelago",
+        headers: { "user-agent": "archipela-go/0.7.0" },
+        signal: controller.signal,
+      });
+      // A busy/overloaded instance returns an HTML error page, not JSON, so
+      // bail out to the next endpoint instead of letting data.json() throw.
+      if (!data.ok) {
+        throw new Error(
+          `Overpass endpoint ${endpoint} returned HTTP ${data.status}`,
+        );
+      }
+      const res: {
+        elements: [{ type: string; id: number; lat: number; lon: number }];
+      } = await data.json();
+      // Log the RESOLVED body, not the Promise. In React Native,
+      // console.log(data.json()) prints a pending Promise ({_h,_i,_j,_k}),
+      // which is not the response content — always await first.
+      console.log(
+        `Overpass ${endpoint} OK: ${res.elements?.length ?? 0} elements`,
+      );
+      return res.elements;
+    } catch (e) {
+      lastError = e;
+      console.log(`Overpass endpoint failed (${endpoint}):`, e);
+      await wait(500);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  throw lastError ?? new Error("All Overpass endpoints failed");
 };
+
+/**
+ * One Overpass query over the whole play area. Returns every road NODE (with
+ * lat/lon) belonging to a matching way in the bbox, minus banned nodes, so the
+ * caller can place all trips locally without further network calls. Returns null
+ * when the area is too large or all endpoints fail — the caller then falls back
+ * to the per-location generator.
+ */
+export async function fetchRoadCandidates(
+  origin: LatLon,
+  maxDistanceMeters: number,
+  bannedOsmIDs: Set<string>,
+  poiMode: PoiMode = "roads",
+): Promise<Candidate[] | null> {
+  if (maxDistanceMeters > AREA_QUERY_MAX_DISTANCE_M) {
+    console.log(
+      `Area ${maxDistanceMeters}m exceeds ${AREA_QUERY_MAX_DISTANCE_M}m; using per-location fallback.`,
+    );
+    return null;
+  }
+  const b = computeBbox(origin, maxDistanceMeters);
+  // Overpass estimates cost from area; hint timeout/maxsize so it schedules well.
+  const areaKm2 = Math.max(1, Math.PI * (maxDistanceMeters / 1000) ** 2);
+  const timeout = Math.min(180, Math.max(25, Math.ceil(areaKm2 * 2)));
+  const roadWays = `way["tracktype"="grade1"];
+    way["tracktype"="grade2"];
+    way["tracktype"="grade3"];
+    way["highway"="residential"];
+    way["highway"="living_street"];
+    way["highway"="pedestrian"];
+    way["highway"="track"];
+    way["highway"="footway"];
+    way["highway"="bridleway"];
+    way["highway"="steps"];
+    way["highway"="cycleway"];
+    way["highway"="service"];
+    way["highway"="secondary"]["maxspeed:type"~":urban"];
+    way["highway"="tertiary"]["maxspeed:type"~":urban"];
+    way["highway"="secondary"]["maxspeed"~"^[0-5][0-9]?$"];
+    way["highway"="tertiary"]["maxspeed"~"^[0-5][0-9]?$"];
+    way["highway"="secondary"]["maxspeed"~"^[0-3][0-9]? mph$"];
+    way["highway"="tertiary"]["maxspeed"~"^[0-3][0-9]? mph$"];`;
+  let body: string;
+  if (poiMode === "indoor") {
+    body = `(
+    node["indoor"];
+    node["level"];
+    node["location"="indoor"];
+  )->.indoor;
+  (${poiNodeFilters("node.indoor")}
+  );`;
+  } else if (poiMode === "pois") {
+    body = `(
+    ${roadWays}
+  )->.roads;
+  (
+    node(w.roads);${poiNodeFilters("node")}
+  );`;
+  } else {
+    body = `(
+    ${roadWays}
+  )->.roads;
+  node(w.roads);`;
+  }
+  const query = `[bbox:${b.south},${b.west},${b.north},${b.east}][timeout:${timeout}][out:json];
+  ${body}
+  out skel qt;`;
+
+  let lastError: unknown = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), OVERPASS_TIMEOUT_MS);
+    try {
+      const data = await fetch(endpoint, {
+        method: "POST",
+        body: "data=" + encodeURIComponent(query),
+        referrer: "com.aki665.archipelago",
+        headers: { "user-agent": "archipela-go/0.7.0" },
+        signal: controller.signal,
+      });
+      if (!data.ok) {
+        throw new Error(`Overpass ${endpoint} returned HTTP ${data.status}`);
+      }
+      const res: {
+        elements: { type: string; id: number; lat: number; lon: number }[];
+      } = await data.json();
+      const candidates: Candidate[] = [];
+      for (const el of res.elements) {
+        if (el.type !== "node" || el.lat == null || el.lon == null) continue;
+        const osmID = el.type[0].toUpperCase() + el.id;
+        if (bannedOsmIDs.has(osmID)) continue;
+        candidates.push({ osmID, lat: el.lat, lon: el.lon });
+      }
+      console.log(
+        `Overpass area ${endpoint} OK: ${candidates.length} candidate nodes`,
+      );
+      return candidates;
+    } catch (e) {
+      lastError = e;
+      console.log(`Overpass area endpoint failed (${endpoint}):`, e);
+      await wait(500);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  console.log("All Overpass area endpoints failed:", lastError);
+  return null;
+}
 
 /**
  * Calculates a random latitude and longitude a certain distance away from given coordinates
@@ -138,9 +323,8 @@ async function generateLocationOverpass(
   max: number,
   theta: number,
   zoom: number,
-  bannedLocationString: string,
-  includePOIs: boolean,
-  indoorOnly: boolean,
+  bannedOsmIDs: Set<string>,
+  poiMode: PoiMode,
   min = 0,
 ) {
   if (min > max) {
@@ -174,19 +358,26 @@ async function generateLocationOverpass(
   console.log("generated coordinates:", newLatitude, newLongitude);
   try {
     await wait(125);
-    const res = await fetchOverpassInfo(
-      newLatitude,
-      newLongitude,
-      bannedLocationString,
-      includePOIs,
-      indoorOnly,
-    );
+    const res = await fetchOverpassInfo(newLatitude, newLongitude, poiMode);
 
-    // POI areas can have hundreds of nodes close together, so a random
-    // result is used instead of the first one to spread the locations out
-    const coords = includePOIs
-      ? res[Math.floor(Math.random() * res.length)]
-      : res[0];
+    // Pick the first returned node that isn't a banned location. osmIDs are
+    // formatted as the capitalized first letter of the type + the id, e.g.
+    // "N123" for node 123 (matching how banned locations are stored).
+    const eligible = res.filter((node) => {
+      if (node.lat == null || node.lon == null) return false;
+      const osmID = node.type[0].toUpperCase() + node.id;
+      if (bannedOsmIDs.has(osmID)) return false;
+      const fromOrigin =
+        getDistanceFromLatLonInKm(latitude, longitude, node.lat, node.lon) *
+        1000;
+      return fromOrigin >= min && fromOrigin <= max;
+    });
+    // POI areas can have hundreds of eligible nodes close together, so a
+    // random pick is used there to spread the locations out.
+    const coords =
+      poiMode === "roads"
+        ? eligible[0]
+        : eligible[Math.floor(Math.random() * eligible.length)];
     if (coords == null)
       return { distance: 0, newLatitude: 0, newLongitude: 0, osmID: "0" };
 
@@ -215,75 +406,6 @@ async function generateLocationOverpass(
   }
 }
 
-// See https://stackoverflow.com/a/27943/10975709
-export function getDistanceFromLatLonInKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-) {
-  const R = 6371; // Radius of the earth in km
-  const dLat = deg2rad(lat2 - lat1); // deg2rad below
-  const dLon = deg2rad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(deg2rad(lat1)) *
-      Math.cos(deg2rad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c; // Distance in km
-  console.log(
-    `distance between ${lat1},${lon1} and ${lat2},${lon2} is ${d} km`,
-  );
-  return d;
-}
-
-function deg2rad(deg: number) {
-  return deg * (Math.PI / 180);
-}
-
-/**Calculates theta and handles max radians being smaller that min radians
- * Also has to fix the crimes committed by the circular slider component.
- */
-function calculateTheta(minRadian: number, maxRadian: number) {
-  console.log(
-    "calculating theta from minRadian",
-    minRadian,
-    "and maxRadian",
-    maxRadian,
-  );
-  /** 
-  Transform the radians start at the correct angle (0 rads) instead of 90 degrees (PI/2 rads)
-  and make the circle go in the right direction (counter clockwise instead of clockwise).
-  Also known as "fixing the crimes committed by the circular slider component"
-  */
-  const fixedMax = Math.abs(minRadian - Math.PI * 2) + Math.PI / 2;
-  const fixedMin = Math.abs(maxRadian - Math.PI * 2) + Math.PI / 2;
-  console.log("fixedMin", fixedMin);
-  console.log("fixedMax", fixedMax);
-
-  if (fixedMin < fixedMax) {
-    const theta = Math.random() * (fixedMax - fixedMin) + fixedMin;
-    console.log("generated theta", theta);
-    return theta;
-  } else {
-    console.log("minRadian is higher than maxRadian.");
-    const maxCircleRads = 2 * Math.PI;
-    const highRandom = Math.random() * (maxCircleRads - fixedMin) + fixedMin;
-    const lowRandom = Math.random() * fixedMax;
-    const isLow = Math.random() < 0.5;
-    console.log(
-      "generated two thetas.",
-      lowRandom,
-      highRandom,
-      "\nReturning",
-      isLow ? lowRandom : highRandom,
-    );
-    return isLow ? lowRandom : highRandom;
-  }
-}
-
 /**
  * Returns a set of coordinates based on input. If resulting coordinates are farther than maximum_distance or nearer than minimum_distance, coordinates get rolled again
  */
@@ -295,12 +417,12 @@ async function getLocationCoordinates(
   useNearZoom: boolean,
   minRadian: number,
   maxRadian: number,
-  bannedLocationString: string,
-  includePOIs: boolean,
-  indoorOnly: boolean,
+  bannedOsmIDs: Set<string>,
+  poiMode: PoiMode,
   minimum_distance = 0,
   correction = 0,
   loop_count = 0,
+  fail_count = 0,
 ): Promise<{
   newLatitude: number;
   newLongitude: number;
@@ -308,14 +430,11 @@ async function getLocationCoordinates(
   osmID: string;
 }> {
   console.log(`${maximum_distance} / 10 * ${distance_tier}`);
-  let maxDist = (maximum_distance / 10) * distance_tier;
-  let minDist = minimum_distance;
-  if (correction > 0) maxDist = maxDist - correction;
-  else if (correction < 0) minDist = minDist - correction;
-  if (maxDist < minimum_distance)
-    maxDist = minimum_distance * (1 + DISTANCE_LENIENCY);
-  if (minDist > maximum_distance)
-    minDist = maximum_distance * (1 - DISTANCE_LENIENCY);
+  const { minDist, maxDist } = annulusBounds(
+    maximum_distance,
+    minimum_distance,
+    distance_tier,
+  );
   const zoom = loop_count > 1 || useNearZoom ? 18 : 17;
 
   const theta = calculateTheta(minRadian, maxRadian);
@@ -325,12 +444,24 @@ async function getLocationCoordinates(
     maxDist,
     theta,
     zoom,
-    bannedLocationString,
-    includePOIs,
-    indoorOnly,
+    bannedOsmIDs,
+    poiMode,
     minDist,
   );
   if (res.osmID === "0") {
+    // No usable road came back. This happens either because Overpass is
+    // unavailable or because the random point had no matching road nearby.
+    // Re-roll a bounded number of times (with a small delay so we don't hammer
+    // the API) and otherwise give up, returning "0" so the caller can react.
+    if (fail_count >= MAX_GENERATION_RETRIES) {
+      console.log(
+        "Giving up generating coordinates after",
+        fail_count,
+        "failed attempts (Overpass unavailable or no matching roads nearby).",
+      );
+      return res;
+    }
+    await wait(250);
     res = await getLocationCoordinates(
       latitude,
       longitude,
@@ -339,50 +470,12 @@ async function getLocationCoordinates(
       useNearZoom,
       minRadian,
       maxRadian,
-      bannedLocationString,
-      includePOIs,
-      indoorOnly,
+      bannedOsmIDs,
+      poiMode,
       minimum_distance,
       correction,
       loop_count,
-    );
-  }
-  const calculatedResult = Math.round(
-    res.distance * 1000 * 1 + DISTANCE_LENIENCY,
-  );
-  if (
-    (calculatedResult < minimum_distance ||
-      calculatedResult > maximum_distance) &&
-    loop_count > 5
-  ) {
-    console.log(
-      "error generating, expected values between",
-      minimum_distance,
-      maximum_distance,
-      "got:",
-      res.distance * 1000,
-    );
-    let cor = correction;
-    if (calculatedResult <= minimum_distance) {
-      cor += minimum_distance - calculatedResult;
-    } else if (calculatedResult >= maximum_distance) {
-      cor += maximum_distance - calculatedResult;
-    }
-    console.log("correction", cor);
-    res = await getLocationCoordinates(
-      latitude,
-      longitude,
-      maximum_distance,
-      distance_tier,
-      useNearZoom,
-      minRadian,
-      maxRadian,
-      bannedLocationString,
-      includePOIs,
-      indoorOnly,
-      minimum_distance,
-      cor,
-      loop_count + 1,
+      fail_count + 1,
     );
   }
   return res;
@@ -401,10 +494,83 @@ export default async function getLocations(
   useNearZoom: boolean,
   maxRadian: number,
   minRadian: number,
-  bannedLocationString: string,
-  includePOIs: boolean,
-  indoorOnly: boolean,
-) {
+  bannedOsmIDs: Set<string>,
+  candidates?: Candidate[] | null,
+  usedOsmIDs?: Set<string>,
+  poiMode: PoiMode = "roads",
+): Promise<{
+  lat: number;
+  lon: number;
+  osmID: string;
+  duplicate: boolean;
+}> {
+  const origin = { lat: initialCords.latitude, lon: initialCords.longitude };
+  const { minDist, maxDist } = annulusBounds(
+    maximum_distance,
+    minimum_distance,
+    trip.distance_tier,
+  );
+
+  // Union banned + already-used road nodes so a candidate is never handed to
+  // two different trips. This wires up the uniqueness that selectCandidate /
+  // placeTrip were built for (see placement.ts) but that no caller supplied —
+  // previously the only defense against co-located checks was the best-effort
+  // duplicate-retry loop, which fails on small candidate sets and silently
+  // leaves two checks on one location.
+  const exclude =
+    usedOsmIDs && usedOsmIDs.size > 0
+      ? new Set<string>([...bannedOsmIDs, ...usedOsmIDs])
+      : bannedOsmIDs;
+
+  // Fast path: place locally against the cached candidate set.
+  if (candidates && candidates.length > 0) {
+    const placed = placeTrip(
+      origin,
+      candidates,
+      minDist,
+      maxDist,
+      minRadian,
+      maxRadian,
+      exclude,
+    );
+    if (!placed) {
+      // The trip's annulus contains no candidate at all — a thin/degenerate
+      // ring (e.g. min==max distance) or a home with no road at that exact
+      // distance. Rather than stranding the check at (0,0)/Null Island — which a
+      // reroll can't fix, since the ring stays empty — snap it to the nearest
+      // real road node, ignoring the distance floor, and allow overlap with an
+      // already-used node so it stacks on/near an existing pin (the marker's
+      // positional jitter keeps both tappable). The floor is relaxed ONLY here,
+      // when it is genuinely unsatisfiable, never on the normal path above.
+      const nearest = selectCandidate(
+        origin,
+        candidates,
+        origin,
+        0,
+        Number.POSITIVE_INFINITY,
+        bannedOsmIDs,
+      );
+      if (nearest) {
+        return {
+          lat: nearest.lat,
+          lon: nearest.lon,
+          osmID: nearest.osmID,
+          duplicate: true,
+        };
+      }
+      // Not even one non-banned candidate exists anywhere. Genuine dead end;
+      // surface the (0,0)/osmID "0" placeholder for a free reroll.
+      return { lat: 0, lon: 0, osmID: "0", duplicate: false };
+    }
+    return {
+      lat: placed.lat,
+      lon: placed.lon,
+      osmID: placed.osmID,
+      duplicate: false,
+    };
+  }
+
+  // Fallback: original per-location Overpass generation (now floor-enforced).
   const coordinates = await getLocationCoordinates(
     initialCords.latitude,
     initialCords.longitude,
@@ -413,9 +579,8 @@ export default async function getLocations(
     useNearZoom,
     minRadian,
     maxRadian,
-    bannedLocationString,
-    includePOIs,
-    indoorOnly,
+    exclude,
+    poiMode,
     minimum_distance,
   );
   return {

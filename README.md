@@ -174,6 +174,69 @@ By pressing the Ap button while connected, a popup containing your goal informat
 <sub>4. Both short and long macguffin hunts</sub> 
 <sub>5. Traps do nothing functionality, but the player is notified when they are received</sub> 
 
+## Building the app from source
+
+These steps produce a **standalone release APK** — the JavaScript is bundled
+into the APK, so the app runs with no Metro dev server and no streamed/dev code.
+(By contrast, `npx expo run:android` / a Debug build load JS from Metro over
+Wi-Fi and are only useful while tethered to a running dev server.)
+
+The GitHub Actions workflow in `.github/workflows/build-apk.yml` runs these
+same steps automatically on every push (and via the "Run workflow" button on
+the Actions tab) and uploads the finished APK as a build artifact, so you can
+also just download it from there instead of building locally.
+
+### Prerequisites
+
+The paths below match the machine this app is currently built on (macOS +
+Homebrew); adjust them for your setup.
+
+- **JDK 17** — Homebrew `openjdk@17` at `/opt/homebrew/opt/openjdk@17` (not on
+  `PATH`, so it's passed via `JAVA_HOME` below).
+- **Android SDK / command-line tools** at
+  `/opt/homebrew/share/android-commandlinetools` (provides `adb`, `gradle` deps,
+  NDK, cmake). `android/local.properties` already points `sdk.dir` here.
+
+No API keys are needed — the map is rendered with MapLibre from OpenStreetMap
+data, so there is no Google Maps key to configure.
+
+### Build the release APK
+
+```sh
+# 1. Install JS dependencies
+npm install
+
+# 2. Generate the native Android project
+npx expo prebuild --platform android
+
+# 3. Build the standalone release APK (JS bundle embedded)
+env JAVA_HOME=/opt/homebrew/opt/openjdk@17 \
+    ANDROID_SDK_ROOT=/opt/homebrew/share/android-commandlinetools \
+    android/gradlew -p android assembleRelease
+```
+
+The finished APK is written to:
+
+```
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+It's a ~107 MB universal APK, signed with the debug keystore, with the JS bundle
+embedded — it launches straight into the app offline, no Metro required.
+
+### Load the new version onto a device
+
+Connect the device over USB with **USB debugging** enabled, then:
+
+```sh
+# adb lives in the SDK's platform-tools; add it to PATH or call it by full path
+/opt/homebrew/share/android-commandlinetools/platform-tools/adb install -r \
+    android/app/build/outputs/apk/release/app-release.apk
+```
+
+`-r` reinstalls over the existing install, keeping app data. You can also
+sideload the `.apk` file directly (e.g. transfer it to the device and open it).
+
 ## Troubleshooting
 
 ### Locations do not appear

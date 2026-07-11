@@ -1,21 +1,10 @@
-import {
-  GeoJSONSource,
-  Layer,
-  Marker,
-} from "@maplibre/maplibre-react-native";
+import { GeoJSONSource, Layer, Marker } from "@maplibre/maplibre-react-native";
 import React, { memo, useContext, useEffect, useMemo, useState } from "react";
-import { Image } from "react-native";
 
 import { trip } from "./MapScreen";
+import GlassMarker, { markerStatus } from "../components/glass/GlassMarker";
 import { SettingsContext } from "../components/SettingsContext";
 import { circlePolygon } from "../utils/mapHelpers";
-
-const getMarker = (canCheck: boolean, hinted: boolean) => {
-  if (canCheck && hinted) return require("../assets/APMarker_Hint.png");
-  else if (canCheck) return require("../assets/APMarker_blue.png");
-  else if (hinted) return require("../assets/APMarker_Hint_gray.png");
-  else return require("../assets/APMarker_gray.png");
-};
 
 const MemoizedMarker = memo(function APMarker({
   trip,
@@ -49,12 +38,7 @@ const MemoizedMarker = memo(function APMarker({
       lngLat={coordinates}
       onPress={() => handleShowPopup(trip)}
     >
-      <Image
-        source={getMarker(canCheck, hinted)}
-        style={{ width: 50, height: 50 }}
-        resizeMode="center"
-        resizeMethod="resize"
-      />
+      <GlassMarker status={markerStatus(canCheck, hinted)} />
     </Marker>
   );
 });
@@ -92,9 +76,9 @@ export default function APMarkers({
           type="fill"
           id="marker-radius-fill"
           paint={{
-            "fill-color": "#4285F4",
-            "fill-opacity": 0.31,
-            "fill-outline-color": "#4285F4",
+            "fill-color": "#B026FF",
+            "fill-opacity": 0.2,
+            "fill-outline-color": "#B026FF",
           }}
         />
       </GeoJSONSource>
