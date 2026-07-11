@@ -283,6 +283,7 @@ export default function MapScreen({
   const { client } = useContext(ClientContext);
   const { getSetting } = useContext(SettingsContext);
   const NEAR_ZOOM = getSetting("NEAR_ZOOM", "boolean");
+  const POI_LOCATIONS = getSetting("POI_LOCATIONS", "boolean");
   const MARKER_RADIUS = getSetting("MARKER_RADIUS", "number");
   const LOCATION_RETRIES = getSetting("LOCATION_RETRIES", "number");
   const MAX_RADIAN = getSetting("MAX_RADIAN", "number");
@@ -377,6 +378,7 @@ export default function MapScreen({
         MAX_RADIAN,
         MIN_RADIAN,
         bannedLocationString,
+        POI_LOCATIONS,
       );
       const isDuplicate = trips.some(
         (value) =>
@@ -552,6 +554,7 @@ export default function MapScreen({
             MAX_RADIAN,
             MIN_RADIAN,
             bannedLocationString,
+            POI_LOCATIONS,
           );
           generatingCoords = tempTrips.some(
             (value) =>
@@ -596,6 +599,7 @@ export default function MapScreen({
           MAX_RADIAN,
           MIN_RADIAN,
           bannedLocationString,
+          POI_LOCATIONS,
         );
         newCoords.duplicate = filteredTrips.some(
           (value) =>

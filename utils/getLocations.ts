@@ -32,10 +32,29 @@ const getOSMTypeAndIdAPI = (
   return `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&zoom=${zoom}&addressdetails=1&extratags=1&format=json`;
 };
 
+/**
+ * Overpass filters for points of interest that location checks can be placed on
+ * when the POI_LOCATIONS setting is enabled.
+ * Only nodes are used, so the resulting osmID stays in the same "N<id>" format
+ * as the nodes belonging to ways.
+ */
+const poiFilters = (latitude: number, longitude: number) => {
+  return `(
+    ._;
+    node(around:200, ${latitude},${longitude})["natural"="tree"];
+    node(around:200, ${latitude},${longitude})["amenity"];
+    node(around:200, ${latitude},${longitude})["shop"];
+    node(around:200, ${latitude},${longitude})["leisure"];
+    node(around:200, ${latitude},${longitude})["tourism"];
+    node(around:200, ${latitude},${longitude})["historic"];
+  );`;
+};
+
 const fetchOverpassInfo = async (
   latitude: number,
   longitude: number,
   bannedLocationString: string,
+  includePOIs: boolean,
 ) => {
   console.log("getting overpass info from lat lon:", latitude, longitude);
   const query = `[out:json];
@@ -62,6 +81,7 @@ const fetchOverpassInfo = async (
     ${bannedLocationString}
   );
   >;
+  ${includePOIs ? poiFilters(latitude, longitude) : ""}
   out skel;`;
   const data = await fetch("https://overpass.private.coffee/api/interpreter", {
     method: "POST",
@@ -91,6 +111,7 @@ async function generateLocationOverpass(
   theta: number,
   zoom: number,
   bannedLocationString: string,
+  includePOIs: boolean,
   min = 0,
 ) {
   if (min > max) {
@@ -128,9 +149,14 @@ async function generateLocationOverpass(
       newLatitude,
       newLongitude,
       bannedLocationString,
+      includePOIs,
     );
 
-    const coords = res[0];
+    // POI areas can have hundreds of nodes close together, so a random
+    // result is used instead of the first one to spread the locations out
+    const coords = includePOIs
+      ? res[Math.floor(Math.random() * res.length)]
+      : res[0];
     if (coords == null)
       return { distance: 0, newLatitude: 0, newLongitude: 0, osmID: "0" };
 
@@ -240,6 +266,7 @@ async function getLocationCoordinates(
   minRadian: number,
   maxRadian: number,
   bannedLocationString: string,
+  includePOIs: boolean,
   minimum_distance = 0,
   correction = 0,
   loop_count = 0,
@@ -268,6 +295,7 @@ async function getLocationCoordinates(
     theta,
     zoom,
     bannedLocationString,
+    includePOIs,
     minDist,
   );
   if (res.osmID === "0") {
@@ -280,6 +308,7 @@ async function getLocationCoordinates(
       minRadian,
       maxRadian,
       bannedLocationString,
+      includePOIs,
       minimum_distance,
       correction,
       loop_count,
@@ -316,6 +345,7 @@ async function getLocationCoordinates(
       minRadian,
       maxRadian,
       bannedLocationString,
+      includePOIs,
       minimum_distance,
       cor,
       loop_count + 1,
@@ -338,6 +368,7 @@ export default async function getLocations(
   maxRadian: number,
   minRadian: number,
   bannedLocationString: string,
+  includePOIs: boolean,
 ) {
   const coordinates = await getLocationCoordinates(
     initialCords.latitude,
@@ -348,6 +379,7 @@ export default async function getLocations(
     minRadian,
     maxRadian,
     bannedLocationString,
+    includePOIs,
     minimum_distance,
   );
   return {

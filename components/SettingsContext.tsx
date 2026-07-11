@@ -122,6 +122,15 @@ const defaultSettings: Settings[] = [
     value: false,
   },
   {
+    name: "POI_LOCATIONS",
+    displayName: "Place locations on points of interest",
+    description:
+      "Allow location checks to be placed on points of interest, like trees, benches and shops, in addition to roads and paths." +
+      "\nShould be turned on if playing in an area with few roads but many objects, like a mall or a park." +
+      "\nDefault: false",
+    value: false,
+  },
+  {
     name: "MARKER_RADIUS",
     displayName: "Location radius",
     description:
