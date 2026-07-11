@@ -50,14 +50,38 @@ const poiFilters = (latitude: number, longitude: number) => {
   );`;
 };
 
+/**
+ * Overpass query for points of interest that are mapped as being indoors,
+ * following the Simple Indoor Tagging schema (level, indoor and location tags).
+ * Replaces the road based query when the POI_INDOOR_ONLY setting is enabled.
+ */
+const indoorPoiQuery = (latitude: number, longitude: number) => {
+  return `[out:json];
+  (
+    node(around:200, ${latitude},${longitude})["indoor"];
+    node(around:200, ${latitude},${longitude})["level"];
+    node(around:200, ${latitude},${longitude})["location"="indoor"];
+  )->.indoor;
+  (
+    node.indoor["natural"="tree"];
+    node.indoor["amenity"];
+    node.indoor["shop"];
+    node.indoor["leisure"];
+    node.indoor["tourism"];
+    node.indoor["historic"];
+  );
+  out skel;`;
+};
+
 const fetchOverpassInfo = async (
   latitude: number,
   longitude: number,
   bannedLocationString: string,
   includePOIs: boolean,
+  indoorOnly: boolean,
 ) => {
   console.log("getting overpass info from lat lon:", latitude, longitude);
-  const query = `[out:json];
+  const roadQuery = `[out:json];
   way(around:200, ${latitude},${longitude})->.a;
   (
     way.a["tracktype"="grade1"];
@@ -83,6 +107,10 @@ const fetchOverpassInfo = async (
   >;
   ${includePOIs ? poiFilters(latitude, longitude) : ""}
   out skel;`;
+  const query =
+    includePOIs && indoorOnly
+      ? indoorPoiQuery(latitude, longitude)
+      : roadQuery;
   const data = await fetch("https://overpass.private.coffee/api/interpreter", {
     method: "POST",
     body: "data=" + encodeURIComponent(query),
@@ -112,6 +140,7 @@ async function generateLocationOverpass(
   zoom: number,
   bannedLocationString: string,
   includePOIs: boolean,
+  indoorOnly: boolean,
   min = 0,
 ) {
   if (min > max) {
@@ -150,6 +179,7 @@ async function generateLocationOverpass(
       newLongitude,
       bannedLocationString,
       includePOIs,
+      indoorOnly,
     );
 
     // POI areas can have hundreds of nodes close together, so a random
@@ -267,6 +297,7 @@ async function getLocationCoordinates(
   maxRadian: number,
   bannedLocationString: string,
   includePOIs: boolean,
+  indoorOnly: boolean,
   minimum_distance = 0,
   correction = 0,
   loop_count = 0,
@@ -296,6 +327,7 @@ async function getLocationCoordinates(
     zoom,
     bannedLocationString,
     includePOIs,
+    indoorOnly,
     minDist,
   );
   if (res.osmID === "0") {
@@ -309,6 +341,7 @@ async function getLocationCoordinates(
       maxRadian,
       bannedLocationString,
       includePOIs,
+      indoorOnly,
       minimum_distance,
       correction,
       loop_count,
@@ -346,6 +379,7 @@ async function getLocationCoordinates(
       maxRadian,
       bannedLocationString,
       includePOIs,
+      indoorOnly,
       minimum_distance,
       cor,
       loop_count + 1,
@@ -369,6 +403,7 @@ export default async function getLocations(
   minRadian: number,
   bannedLocationString: string,
   includePOIs: boolean,
+  indoorOnly: boolean,
 ) {
   const coordinates = await getLocationCoordinates(
     initialCords.latitude,
@@ -380,6 +415,7 @@ export default async function getLocations(
     maxRadian,
     bannedLocationString,
     includePOIs,
+    indoorOnly,
     minimum_distance,
   );
   return {

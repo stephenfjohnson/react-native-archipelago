@@ -131,6 +131,16 @@ const defaultSettings: Settings[] = [
     value: false,
   },
   {
+    name: "POI_INDOOR_ONLY",
+    displayName: "Only use indoor points of interest",
+    description:
+      "Only place location checks on points of interest that are mapped as being indoors, like the stores inside a mall." +
+      '\nOnly used if "Place locations on points of interest" is also turned on.' +
+      "\nWarning: most buildings have no indoor data in OpenStreetMap. If location generation gets stuck, turn this setting off." +
+      "\nDefault: false",
+    value: false,
+  },
+  {
     name: "MARKER_RADIUS",
     displayName: "Location radius",
     description:
