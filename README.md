@@ -10,6 +10,9 @@
 
 ## Notable features
 
+### Map
+The map is rendered with [MapLibre](https://maplibre.org) using OpenStreetMap tiles. The app does not use Google Play Services and needs no map API keys.
+
 ### Settings
 Settings can be found and changed in the settings screen (duh). Pressing the ? icon next to the settings name will give a short description of the setting. Bellow is a list of the settings with a longer description.
 | Name | Description |
@@ -19,7 +22,6 @@ Settings can be found and changed in the settings screen (duh). Pressing the ? i
 | Keep screen on | Determines if app should keep the screen on.<br>If true, the screen will not turn off if you are connected to an Archipelago server.<br>If false, the screen will not turn off during location generation.<br>Default value is false |
 | Play sound effects | Determines if the app should play sounds. Sound effects will play on disconnection and reconnection. Additionally the appropriate sound will play when an item is received. See sound effect [license file](assets/sounds/LICENSE.txt) for more info. Default: true |
 | Allow multiple locations on the same road | If enabled, a road can have multiple locations. For example, imagine a road that has three buildings, Building 1, Building 2 and Building 3. If this setting is disabled, only a single location will be on the road, located usually at the middle point of the road. If enabled, all three buildings can be locations separately. <br>Default is off. Should be turned on, if playing in an area with few roads or with many locations to speed up generation.<br><br> Note: The location generation will selectively act like this setting is enabled, if location a single location takes too many attempts.    |
-| Use OpenStreetMap map tiles | Shows the map using OpenStreetMap tiles instead of Google Maps. Google Maps only works if the app was built with a Google Maps API key (`EXPO_PUBLIC_GOOGLE_API_KEY_ANDROID`), because Google requires the key to be baked into the app at build time. OpenStreetMap tiles do not need an API key at all. <br>Default: on if the app was built without a Google Maps API key, otherwise off. |
 | Place locations on points of interest | Allows location checks to be placed on points of interest, like trees, benches and shops, in addition to roads and paths. Should be turned on if playing in an area with few roads but many objects, like a mall or a park. <br>Default is off. |
 | Only use indoor points of interest | Only places location checks on points of interest that are mapped as being indoors in OpenStreetMap, like the stores inside a mall. Only used if "Place locations on points of interest" is also turned on. <br>Warning: most buildings have no indoor data in OpenStreetMap. If location generation gets stuck, turn this setting off. <br>Default is off. |
 | Location radius | Determines the distance from which a location can be collected (in meters). Because of the variance in locations, you should determine the best value for your area. Allowed values are 10 - 100. Default is 20.     |

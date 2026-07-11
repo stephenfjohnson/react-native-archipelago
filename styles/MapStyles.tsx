@@ -33,17 +33,6 @@ const mapStyles = StyleSheet.create({
     opacity: 0.75,
     borderBlockColor: "lightgray",
   },
-  osmAttribution: {
-    position: "absolute",
-    bottom: 2,
-    left: 6,
-    zIndex: 1000,
-    fontSize: 10,
-    color: "black",
-    backgroundColor: "#ffffffb0",
-    paddingHorizontal: 4,
-    borderRadius: 2,
-  },
   apLogo: {
     maxWidth: 23,
     maxHeight: 23,

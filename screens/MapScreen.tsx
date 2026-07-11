@@ -21,12 +21,17 @@ import {
   Alert,
   AppState,
   Image,
-  Platform,
   Pressable,
   Text,
   View,
 } from "react-native";
-import MapView, { Camera, LatLng, Marker, UrlTile } from "react-native-maps";
+import {
+  Camera,
+  CameraRef,
+  Map as MapLibreMap,
+  Marker,
+  UserLocation,
+} from "@maplibre/maplibre-react-native";
 
 import APMarkers from "./APMarkers";
 import AsyncAlert from "../components/AsyncAlert";
@@ -37,6 +42,7 @@ import LocationInfoPopup, {
 import { findSetting, SettingsContext } from "../components/SettingsContext";
 import mapStyles from "../styles/MapStyles";
 import getLocations from "../utils/getLocations";
+import { LatLng, OSM_RASTER_STYLE } from "../utils/mapHelpers";
 import handleItems, { GOAL_MAP, MAP_ID_TO_ITEM } from "../utils/handleItems";
 import { STORAGE_TYPES, load, save } from "../utils/storageHandler";
 import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -88,66 +94,35 @@ function MemoizedMap({
   USE_HOME_LOCATION: boolean;
   HOME_LOCATION: LatLng;
 }>) {
-  const mapRef = useRef<MapView | null>(null);
-  const { getSetting } = useContext(SettingsContext);
-  const USE_OSM_TILES = getSetting("USE_OSM_TILES", "boolean");
+  const cameraRef = useRef<CameraRef | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const centered = useRef(false);
 
-  const onMapReady = () => {
-    let camera: Camera | null = null;
+  useEffect(() => {
+    if (!mapLoaded || centered.current) return;
+    let center: [number, number] | null = null;
 
     if (USE_HOME_LOCATION) {
-      camera = {
-        altitude: 3,
-        center: {
-          latitude: HOME_LOCATION.latitude,
-          longitude: HOME_LOCATION.longitude,
-        },
-        heading: 0,
-        pitch: 0,
-        zoom: 15,
-      };
-    } else if (location)
-      camera = {
-        altitude: 3,
-        center: {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        },
-        heading: 0,
-        pitch: 0,
-        zoom: 15,
-      };
-    if (camera !== null && mapRef.current !== null) {
-      mapRef?.current.setCamera(camera);
+      center = [HOME_LOCATION.longitude, HOME_LOCATION.latitude];
+    } else if (location) {
+      center = [location.coords.longitude, location.coords.latitude];
     }
-  };
+    if (center !== null) {
+      cameraRef.current?.jumpTo({ center, zoom: 15 });
+      centered.current = true;
+    }
+  }, [mapLoaded, location, USE_HOME_LOCATION]);
+
   return (
-    <>
-      <MapView
-        ref={mapRef}
-        style={mapStyles.map}
-        userLocationUpdateInterval={1000}
-        showsUserLocation
-        onMapReady={onMapReady}
-        mapType={
-          USE_OSM_TILES && Platform.OS === "android" ? "none" : "standard"
-        }
-      >
-        {USE_OSM_TILES && (
-          <UrlTile
-            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maximumZ={19}
-            shouldReplaceMapContent
-          />
-        )}
-        {children}
-      </MapView>
-      {USE_OSM_TILES && (
-        <Text style={mapStyles.osmAttribution}>
-          © OpenStreetMap contributors
-        </Text>
-      )}
-    </>
+    <MapLibreMap
+      style={mapStyles.map}
+      mapStyle={OSM_RASTER_STYLE}
+      onDidFinishLoadingMap={() => setMapLoaded(true)}
+    >
+      <Camera ref={cameraRef} />
+      <UserLocation />
+      {children}
+    </MapLibreMap>
   );
 }
 
@@ -922,10 +897,11 @@ export default function MapScreen({
           receivedKeys={receivedKeys}
           handleShowPopup={handleShowPopup}
           hintedProgTrips={hintedProgTrips}
-          refresh={refresh}
         />
         {USE_HOME_LOCATION && (
-          <Marker coordinate={HOME_LOCATION} tracksViewChanges={false}>
+          <Marker
+            lngLat={[HOME_LOCATION.longitude, HOME_LOCATION.latitude]}
+          >
             <MaterialCommunityIcons
               color={Colors.playerSelf}
               name="map-marker-account"

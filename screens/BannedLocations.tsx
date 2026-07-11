@@ -1,11 +1,11 @@
-import MapView, {
-  Callout,
-  Circle,
-  LatLng,
-  MapMarker,
+import {
+  Camera,
+  GeoJSONSource,
+  Layer,
+  Map as MapLibreMap,
   Marker,
-  UrlTile,
-} from "react-native-maps";
+  UserLocation,
+} from "@maplibre/maplibre-react-native";
 import mapStyles from "../styles/MapStyles";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import {
@@ -13,7 +13,6 @@ import {
   BackHandler,
   Dimensions,
   NativeEventSubscription,
-  Platform,
   Pressable,
   Switch,
   Text,
@@ -33,6 +32,7 @@ import Colors from "../styles/Colors";
 import { locationInfo } from "../components/LocationInfoPopup";
 import { load, save } from "../utils/storageHandler";
 import { Settings, SettingsContext } from "../components/SettingsContext";
+import { circlePolygon, LatLng, OSM_RASTER_STYLE } from "../utils/mapHelpers";
 
 export async function getBannedLocations() {
   const bannedLocations = await load("__bannedLocations", "object");
@@ -92,31 +92,17 @@ function BannedLocationMarker({
   l: locationInfo["coords"];
   handleRemoveBannedLocation: (location: locationInfo["coords"]) => void;
 }>) {
-  const markerRef = useRef<null | MapMarker>(null);
   return (
     <Marker
-      coordinate={{ latitude: l.lat, longitude: l.lon }}
-      tracksViewChanges={false}
-      ref={markerRef}
+      id={l.osmID}
+      lngLat={[l.lon, l.lat]}
+      onPress={() => handleRemoveBannedLocation(l)}
     >
       <MaterialCommunityIcons
         color={Colors.trap}
         name="map-marker-remove-variant"
         size={50}
       />
-      <Callout
-        style={{ width: 350 }}
-        onPress={() => {
-          handleRemoveBannedLocation(l);
-          markerRef.current?.redraw();
-        }}
-      >
-        {/* TODO: Figure out using a CalloutSubview here, or using apple maps instead of google maps for iOS support */}
-        <View>
-          <Text>{l.osmID}</Text>
-          <Text>Press here to remove this location from banned locations</Text>
-        </View>
-      </Callout>
     </Marker>
   );
 }
@@ -136,7 +122,6 @@ export default function BannedLocations({
 }>) {
   const { getSetting, handleSettingChange } = useContext(SettingsContext);
   const HOME_LOCATION = getSetting("HOME_LOCATION", "object") as LatLng;
-  const USE_OSM_TILES = getSetting("USE_OSM_TILES", "boolean");
 
   const [visible, setVisible] = useState(false);
   const [smallCircleRadius, setSmallCircleRadius] = useState(500);
@@ -232,7 +217,7 @@ export default function BannedLocations({
   function handleRemoveBannedLocation(location: locationInfo["coords"]) {
     Alert.alert(
       "Do you want to remove this location from the list of banned locations?",
-      undefined,
+      location.osmID,
       [
         {
           text: "Cancel",
@@ -271,8 +256,9 @@ export default function BannedLocations({
               marginTop: 10,
             }}
           >
-            Tap and hold on the marker to move your home location. This will be
-            used in location generation as the starting point. {"\n\n"}
+            Tap and hold anywhere on the map to move your home location there.
+            This will be used in location generation as the starting point.{" "}
+            {"\n\n"}
             Use the button at the top of the screen to set the allowed
             directions for markers to show up.{"\n\n"}
             Use the fields bellow to change the sizes of the circles. Use the
@@ -462,57 +448,55 @@ export default function BannedLocations({
           <AntDesign name="questioncircleo" size={24} color="black" />
         </View>
       </Pressable>
-      <MapView
+      <MapLibreMap
         style={mapStyles.map}
-        userLocationUpdateInterval={1000}
-        showsUserLocation
-        mapType={
-          USE_OSM_TILES && Platform.OS === "android" ? "none" : "standard"
-        }
-        initialRegion={{
-          latitude: route.params.location.coords.latitude,
-          longitude: route.params.location.coords.longitude,
-          latitudeDelta: 0.15,
-          longitudeDelta: 0.15,
+        mapStyle={OSM_RASTER_STYLE}
+        onLongPress={(event) => {
+          const [longitude, latitude] = event.nativeEvent.lngLat;
+          setHomeMarkerLatLng({ latitude, longitude });
         }}
       >
-        {USE_OSM_TILES && (
-          <UrlTile
-            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maximumZ={19}
-            shouldReplaceMapContent
+        <Camera
+          initialViewState={{
+            center: [
+              route.params.location.coords.longitude,
+              route.params.location.coords.latitude,
+            ],
+            zoom: 10,
+          }}
+        />
+        <UserLocation />
+        <GeoJSONSource
+          id="distance-circles"
+          data={{
+            type: "FeatureCollection",
+            features: [smallCircleRadius, largeCircleRadius].map((radius) =>
+              circlePolygon(
+                homeMarkerEnabled
+                  ? homeMarkerLatLng.latitude
+                  : route.params.location.coords.latitude,
+                homeMarkerEnabled
+                  ? homeMarkerLatLng.longitude
+                  : route.params.location.coords.longitude,
+                radius,
+              ),
+            ),
+          }}
+        >
+          <Layer
+            type="fill"
+            id="distance-circles-fill"
+            paint={{ "fill-color": "#4285F4", "fill-opacity": 0.1 }}
           />
-        )}
-        <Circle
-          radius={smallCircleRadius}
-          center={
-            homeMarkerEnabled
-              ? homeMarkerLatLng
-              : {
-                  latitude: route.params.location.coords.latitude,
-                  longitude: route.params.location.coords.longitude,
-                }
-          }
-        />
-        <Circle
-          radius={largeCircleRadius}
-          center={
-            homeMarkerEnabled
-              ? homeMarkerLatLng
-              : {
-                  latitude: route.params.location.coords.latitude,
-                  longitude: route.params.location.coords.longitude,
-                }
-          }
-        />
+          <Layer
+            type="line"
+            id="distance-circles-outline"
+            paint={{ "line-color": "#4285F4", "line-width": 2 }}
+          />
+        </GeoJSONSource>
         {homeMarkerEnabled && (
           <Marker
-            coordinate={homeMarkerLatLng}
-            draggable
-            onDragEnd={(event) =>
-              setHomeMarkerLatLng(event.nativeEvent.coordinate)
-            }
-            tracksViewChanges={false}
+            lngLat={[homeMarkerLatLng.longitude, homeMarkerLatLng.latitude]}
           >
             <MaterialCommunityIcons
               color={Colors.playerSelf}
@@ -530,12 +514,7 @@ export default function BannedLocations({
             />
           );
         })}
-      </MapView>
-      {USE_OSM_TILES && (
-        <Text style={mapStyles.osmAttribution}>
-          © OpenStreetMap contributors
-        </Text>
-      )}
+      </MapLibreMap>
       {showAdjuster && (
         <View
           style={{
