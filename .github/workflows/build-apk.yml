@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - claude/archipelago-pin-placement-0icpmp
       - archipela-go
 
